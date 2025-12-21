@@ -1,0 +1,191 @@
+# C-CDA recordTarget to FHIR R4 Patient Mapping
+# Consolidated CDA R2 / C-CDA 2.1 Patient Demographics
+
+source_system: ccda
+source_table: recordTarget
+target_resource: Patient
+
+description: |
+  Maps C-CDA recordTarget/patientRole to FHIR R4 Patient.
+  Works with CCD, Discharge Summary, Progress Notes, etc.
+  XPath references are relative to ClinicalDocument/recordTarget/patientRole
+
+field_mappings:
+  # Patient ID (from id element)
+  - source: id/@root
+    target: identifier[0].system
+    transform: oid_to_uri
+    description: OID of assigning authority
+
+  - source: id/@extension
+    target: identifier[0].value
+    description: Patient identifier (MRN)
+
+  # SSN if present (separate id with specific root)
+  - source: id[@root='2.16.840.1.113883.4.1']/@extension
+    target: identifier[1].value
+    target_context:
+      identifier[1].system: "http://hl7.org/fhir/sid/us-ssn"
+      identifier[1].type.coding[0].code: SS
+    skip_if_null: true
+
+  # Address (from addr element)
+  - source: addr/streetAddressLine[1]
+    target: address[0].line[0]
+    skip_if_null: true
+
+  - source: addr/streetAddressLine[2]
+    target: address[0].line[1]
+    skip_if_null: true
+
+  - source: addr/city
+    target: address[0].city
+
+  - source: addr/state
+    target: address[0].state
+
+  - source: addr/postalCode
+    target: address[0].postalCode
+
+  - source: addr/country
+    target: address[0].country
+    skip_if_null: true
+
+  - source: addr/@use
+    target: address[0].use
+    transform: cda_address_use_to_fhir
+    value_mapping:
+      HP: home     # Primary home
+      H: home      # Home
+      WP: work     # Work place
+      TMP: temp    # Temporary
+      OLD: old     # Bad/old address
+
+  # Telecom (phone/email)
+  - source: telecom[1]/@value
+    target: telecom[0].value
+    transform: cda_telecom_to_value
+    description: "Extract number from tel: or mailto: URI"
+
+  - source: telecom[1]/@use
+    target: telecom[0].use
+    transform: cda_telecom_use_to_fhir
+    value_mapping:
+      HP: home
+      WP: work
+      MC: mobile
+
+  # Patient name (inside patient element)
+  - source: patient/name/family
+    target: name[0].family
+
+  - source: patient/name/given[1]
+    target: name[0].given[0]
+
+  - source: patient/name/given[2]
+    target: name[0].given[1]
+    skip_if_null: true
+
+  - source: patient/name/prefix
+    target: name[0].prefix[0]
+    skip_if_null: true
+
+  - source: patient/name/suffix
+    target: name[0].suffix[0]
+    skip_if_null: true
+
+  - source: patient/name/@use
+    target: name[0].use
+    transform: cda_name_use_to_fhir
+    value_mapping:
+      L: official
+      OR: official
+      A: usual
+      ASGN: official
+      C: nickname
+
+  # Administrative Gender
+  - source: patient/administrativeGenderCode/@code
+    target: gender
+    transform: cda_gender_to_fhir
+    value_mapping:
+      M: male
+      F: female
+      UN: unknown
+      UNK: unknown
+
+  # Birth Date
+  - source: patient/birthTime/@value
+    target: birthDate
+    transform: cda_datetime_to_fhir_date
+
+  # Marital Status
+  - source: patient/maritalStatusCode/@code
+    target: maritalStatus.coding[0].code
+    skip_if_null: true
+
+  - source: patient/maritalStatusCode/@displayName
+    target: maritalStatus.coding[0].display
+    skip_if_null: true
+
+  # Race (US Realm extension)
+  - source: patient/raceCode/@code
+    target: extension[0].valueCodeableConcept.coding[0].code
+    target_context:
+      extension[0].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+    skip_if_null: true
+
+  # Ethnicity (US Realm extension)
+  - source: patient/ethnicGroupCode/@code
+    target: extension[1].valueCodeableConcept.coding[0].code
+    target_context:
+      extension[1].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+    skip_if_null: true
+
+  # Language
+  - source: patient/languageCommunication/languageCode/@code
+    target: communication[0].language.coding[0].code
+    skip_if_null: true
+
+  # Deceased information
+  - source: patient/deceasedInd/@value
+    target: deceasedBoolean
+    transform: cda_bool_to_boolean
+    skip_if_null: true
+
+  - source: patient/deceasedTime/@value
+    target: deceasedDateTime
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Birth place extension
+  - source: patient/birthplace/place/addr/city
+    target: extension[2].valueAddress.city
+    target_context:
+      extension[2].url: "http://hl7.org/fhir/StructureDefinition/patient-birthPlace"
+    skip_if_null: true
+
+  - source: patient/birthplace/place/addr/state
+    target: extension[2].valueAddress.state
+    skip_if_null: true
+
+  # Guardian/Contact
+  - source: patient/guardian/guardianPerson/name/given
+    target: contact[0].name.given[0]
+    skip_if_null: true
+
+  - source: patient/guardian/guardianPerson/name/family
+    target: contact[0].name.family
+    skip_if_null: true
+
+  - source: patient/guardian/code/@code
+    target: contact[0].relationship[0].coding[0].code
+    skip_if_null: true
+
+# Transform functions needed:
+# - cda_datetime_to_fhir_date: YYYYMMDD -> YYYY-MM-DD
+# - cda_datetime_to_fhir_datetime: Full datetime conversion
+# - cda_gender_to_fhir: M/F/UN map
+# - cda_address_use_to_fhir: HP/H/WP map
+# - cda_telecom_to_value: Extract from tel:/mailto: URI
+# - oid_to_uri: Convert OID to urn:oid: format

@@ -1,0 +1,96 @@
+# C-CDA Problem Concern Act to FHIR R4 Condition Mapping
+
+source_system: ccda
+source_table: ProblemConcernAct
+target_resource: Condition
+
+description: |
+  Maps C-CDA Problem Concern Act entries to FHIR R4 Condition.
+  XPath: ClinicalDocument/component/structuredBody/component/section[templateId/@root='2.16.840.1.113883.10.20.22.2.5.1']/entry/act/entryRelationship/observation
+
+field_mappings:
+  # Problem ID
+  - source: observation/id/@root
+    target: identifier[0].system
+    transform: oid_to_uri
+
+  - source: observation/id/@extension
+    target: identifier[0].value
+
+  # Clinical Status (derived from statusCode and effectiveTime)
+  - source: act/statusCode/@code
+    target: clinicalStatus.coding[0].code
+    transform: cda_problem_status_to_fhir
+    value_mapping:
+      active: active
+      completed: resolved
+      aborted: inactive
+      suspended: inactive
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-clinical"
+
+  # Verification Status
+  - source: observation/value/@nullFlavor
+    target: verificationStatus.coding[0].code
+    transform: cda_null_flavor_to_verification
+    skip_if_null: true
+    target_context:
+      verificationStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-ver-status"
+
+  # Category (always problem-list-item for Problems section)
+  - source: null
+    target: category[0].coding[0].code
+    default: problem-list-item
+    target_context:
+      category[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-category"
+
+  # Problem Code (SNOMED or ICD)
+  - source: observation/value/@code
+    target: code.coding[0].code
+
+  - source: observation/value/@displayName
+    target: code.coding[0].display
+
+  - source: observation/value/@codeSystem
+    target: code.coding[0].system
+    transform: oid_to_uri
+
+  - source: observation/text
+    target: code.text
+    skip_if_null: true
+
+  # Onset Date
+  - source: observation/effectiveTime/low/@value
+    target: onsetDateTime
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Abatement Date (when problem resolved)
+  - source: observation/effectiveTime/high/@value
+    target: abatementDateTime
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Recorded Date (author time)
+  - source: act/author/time/@value
+    target: recordedDate
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Severity
+  - source: observation/entryRelationship[@typeCode='SUBJ']/observation[templateId/@root='2.16.840.1.113883.10.20.22.4.8']/value/@code
+    target: severity.coding[0].code
+    skip_if_null: true
+
+  - source: observation/entryRelationship[@typeCode='SUBJ']/observation[templateId/@root='2.16.840.1.113883.10.20.22.4.8']/value/@displayName
+    target: severity.coding[0].display
+    skip_if_null: true
+
+  # Body Site
+  - source: observation/targetSiteCode/@code
+    target: bodySite[0].coding[0].code
+    skip_if_null: true
+
+  - source: observation/targetSiteCode/@displayName
+    target: bodySite[0].coding[0].display
+    skip_if_null: true

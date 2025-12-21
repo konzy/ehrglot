@@ -1,0 +1,116 @@
+# C-CDA Immunization Activity to FHIR R4 Immunization Mapping
+
+source_system: ccda
+source_table: ImmunizationActivity
+target_resource: Immunization
+
+description: |
+  Maps C-CDA Immunization Activity entries to FHIR R4 Immunization.
+  XPath: ClinicalDocument/component/structuredBody/component/section[templateId/@root='2.16.840.1.113883.10.20.22.2.2.1']/entry/substanceAdministration
+
+field_mappings:
+  # Immunization ID
+  - source: id/@root
+    target: identifier[0].system
+    transform: oid_to_uri
+
+  - source: id/@extension
+    target: identifier[0].value
+
+  # Status
+  - source: statusCode/@code
+    target: status
+    transform: cda_imm_status_to_fhir
+    value_mapping:
+      completed: completed
+      cancelled: not-done
+      active: completed  # In progress still considered given
+
+  # Vaccine Code (CVX)
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/@code
+    target: vaccineCode.coding[0].code
+
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/@displayName
+    target: vaccineCode.coding[0].display
+
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/@codeSystem
+    target: vaccineCode.coding[0].system
+    transform: oid_to_uri
+
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/originalText
+    target: vaccineCode.text
+    skip_if_null: true
+
+  # Occurrence DateTime
+  - source: effectiveTime/@value
+    target: occurrenceDateTime
+    transform: cda_datetime_to_fhir_datetime
+
+  # Primary Source (negationInd = false means actually administered)
+  - source: "@negationInd"
+    target: primarySource
+    transform: cda_negation_to_primary_source
+    description: If negated, it's not-done status
+
+  # Lot Number
+  - source: consumable/manufacturedProduct/manufacturedMaterial/lotNumberText
+    target: lotNumber
+    skip_if_null: true
+
+  # Expiration Date
+  - source: consumable/manufacturedProduct/manufacturedMaterial/expirationTime/@value
+    target: expirationDate
+    transform: cda_datetime_to_fhir_date
+    skip_if_null: true
+
+  # Dose Quantity
+  - source: doseQuantity/@value
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: doseQuantity/@unit
+    target: doseQuantity.unit
+    skip_if_null: true
+
+  # Route
+  - source: routeCode/@code
+    target: route.coding[0].code
+    skip_if_null: true
+
+  - source: routeCode/@displayName
+    target: route.coding[0].display
+    skip_if_null: true
+
+  # Site
+  - source: approachSiteCode/@code
+    target: site.coding[0].code
+    skip_if_null: true
+
+  - source: approachSiteCode/@displayName
+    target: site.coding[0].display
+    skip_if_null: true
+
+  # Performer
+  - source: performer/assignedEntity/id/@extension
+    target: performer[0].actor.identifier.value
+    skip_if_null: true
+
+  - source: performer/assignedEntity/assignedPerson/name/family
+    target: performer[0].actor.display
+    skip_if_null: true
+
+  # Manufacturer
+  - source: consumable/manufacturedProduct/manufacturerOrganization/name
+    target: manufacturer.display
+    skip_if_null: true
+
+  # Reason (refusal reason if not-done)
+  - source: entryRelationship[@typeCode='RSON']/observation/value/@displayName
+    target: statusReason.text
+    skip_if_null: true
+
+  # Reaction
+  - source: entryRelationship[@typeCode='CAUS']/observation/value/@code
+    target: reaction[0].detail.display
+    skip_if_null: true

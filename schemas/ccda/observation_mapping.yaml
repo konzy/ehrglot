@@ -1,0 +1,113 @@
+# C-CDA Result Organizer to FHIR R4 Observation Mapping
+
+source_system: ccda
+source_table: ResultOrganizer
+target_resource: Observation
+
+description: |
+  Maps C-CDA Result Observation entries to FHIR R4 Observation.
+  XPath: ClinicalDocument/component/structuredBody/component/section[templateId/@root='2.16.840.1.113883.10.20.22.2.3.1']/entry/organizer/component/observation
+
+field_mappings:
+  # Observation ID
+  - source: id/@root
+    target: identifier[0].system
+    transform: oid_to_uri
+
+  - source: id/@extension
+    target: identifier[0].value
+
+  # Status
+  - source: statusCode/@code
+    target: status
+    transform: cda_result_status_to_fhir
+    value_mapping:
+      completed: final
+      active: registered
+      cancelled: cancelled
+
+  # Category (laboratory for Results section)
+  - source: null
+    target: category[0].coding[0].code
+    default: laboratory
+    target_context:
+      category[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/observation-category"
+
+  # Observation Code (LOINC typical)
+  - source: code/@code
+    target: code.coding[0].code
+
+  - source: code/@displayName
+    target: code.coding[0].display
+
+  - source: code/@codeSystem
+    target: code.coding[0].system
+    transform: oid_to_uri
+
+  - source: code/originalText
+    target: code.text
+    skip_if_null: true
+
+  # Effective DateTime
+  - source: effectiveTime/@value
+    target: effectiveDateTime
+    transform: cda_datetime_to_fhir_datetime
+
+  # Value (Physical Quantity - numeric)
+  - source: value[@xsi:type='PQ']/@value
+    target: valueQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: value[@xsi:type='PQ']/@unit
+    target: valueQuantity.unit
+    skip_if_null: true
+
+  # Value (String/Text)
+  - source: value[@xsi:type='ST']
+    target: valueString
+    skip_if_null: true
+
+  # Value (Coded)
+  - source: value[@xsi:type='CD']/@code
+    target: valueCodeableConcept.coding[0].code
+    skip_if_null: true
+
+  - source: value[@xsi:type='CD']/@displayName
+    target: valueCodeableConcept.coding[0].display
+    skip_if_null: true
+
+  # Interpretation (abnormal flags)
+  - source: interpretationCode/@code
+    target: interpretation[0].coding[0].code
+    skip_if_null: true
+    target_context:
+      interpretation[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+
+  # Reference Range
+  - source: referenceRange/observationRange/value/low/@value
+    target: referenceRange[0].low.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: referenceRange/observationRange/value/low/@unit
+    target: referenceRange[0].low.unit
+    skip_if_null: true
+
+  - source: referenceRange/observationRange/value/high/@value
+    target: referenceRange[0].high.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: referenceRange/observationRange/value/high/@unit
+    target: referenceRange[0].high.unit
+    skip_if_null: true
+
+  - source: referenceRange/observationRange/text
+    target: referenceRange[0].text
+    skip_if_null: true
+
+  # Performer
+  - source: performer/assignedEntity/id/@extension
+    target: performer[0].identifier.value
+    skip_if_null: true

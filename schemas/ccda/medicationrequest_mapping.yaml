@@ -1,0 +1,106 @@
+# C-CDA Medication Activity to FHIR R4 MedicationRequest Mapping
+
+source_system: ccda
+source_table: MedicationActivity
+target_resource: MedicationRequest
+
+description: |
+  Maps C-CDA Medication Activity entries to FHIR R4 MedicationRequest.
+  XPath: ClinicalDocument/component/structuredBody/component/section[templateId/@root='2.16.840.1.113883.10.20.22.2.1.1']/entry/substanceAdministration
+
+field_mappings:
+  # Medication ID
+  - source: id/@root
+    target: identifier[0].system
+    transform: oid_to_uri
+
+  - source: id/@extension
+    target: identifier[0].value
+
+  # Status
+  - source: statusCode/@code
+    target: status
+    transform: cda_med_status_to_fhir
+    value_mapping:
+      active: active
+      completed: completed
+      cancelled: cancelled
+      held: on-hold
+      new: active
+
+  # Intent (always order for prescribed medications)
+  - source: null
+    target: intent
+    default: order
+
+  # Medication Code (from consumable/manufacturedProduct)
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/@code
+    target: medicationCodeableConcept.coding[0].code
+
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/@displayName
+    target: medicationCodeableConcept.coding[0].display
+
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/@codeSystem
+    target: medicationCodeableConcept.coding[0].system
+    transform: oid_to_uri
+
+  - source: consumable/manufacturedProduct/manufacturedMaterial/code/originalText
+    target: medicationCodeableConcept.text
+    skip_if_null: true
+
+  # Authored On (effectiveTime low)
+  - source: effectiveTime/low/@value
+    target: authoredOn
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Dosage Instruction - Dose Quantity
+  - source: doseQuantity/@value
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: doseQuantity/@unit
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.unit
+    skip_if_null: true
+
+  # Route
+  - source: routeCode/@code
+    target: dosageInstruction[0].route.coding[0].code
+    skip_if_null: true
+
+  - source: routeCode/@displayName
+    target: dosageInstruction[0].route.coding[0].display
+    skip_if_null: true
+
+  - source: routeCode/@codeSystem
+    target: dosageInstruction[0].route.coding[0].system
+    transform: oid_to_uri
+    skip_if_null: true
+
+  # Frequency (from effectiveTime with operator)
+  - source: effectiveTime[@operator='A']/period/@value
+    target: dosageInstruction[0].timing.repeat.period
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: effectiveTime[@operator='A']/period/@unit
+    target: dosageInstruction[0].timing.repeat.periodUnit
+    transform: cda_time_unit_to_fhir
+    skip_if_null: true
+
+  # Free text SIG
+  - source: text
+    target: dosageInstruction[0].text
+    skip_if_null: true
+
+  # Supply information (dispense request)
+  - source: entryRelationship[@typeCode='REFR']/supply/repeatNumber/@value
+    target: dispenseRequest.numberOfRepeatsAllowed
+    transform: to_integer
+    skip_if_null: true
+
+  - source: entryRelationship[@typeCode='REFR']/supply/quantity/@value
+    target: dispenseRequest.quantity.value
+    transform: to_decimal
+    skip_if_null: true

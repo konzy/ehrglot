@@ -1,0 +1,97 @@
+# C-CDA Procedure Activity to FHIR R4 Procedure Mapping
+
+source_system: ccda
+source_table: ProcedureActivity
+target_resource: Procedure
+
+description: |
+  Maps C-CDA Procedure Activity entries to FHIR R4 Procedure.
+  XPath: ClinicalDocument/component/structuredBody/component/section[templateId/@root='2.16.840.1.113883.10.20.22.2.7.1']/entry/procedure
+
+field_mappings:
+  # Procedure ID
+  - source: id/@root
+    target: identifier[0].system
+    transform: oid_to_uri
+
+  - source: id/@extension
+    target: identifier[0].value
+
+  # Status
+  - source: statusCode/@code
+    target: status
+    transform: cda_procedure_status_to_fhir
+    value_mapping:
+      completed: completed
+      active: in-progress
+      cancelled: not-done
+      aborted: stopped
+
+  # Procedure Code (CPT, SNOMED, ICD-10-PCS)
+  - source: code/@code
+    target: code.coding[0].code
+
+  - source: code/@displayName
+    target: code.coding[0].display
+
+  - source: code/@codeSystem
+    target: code.coding[0].system
+    transform: oid_to_uri
+
+  - source: code/originalText
+    target: code.text
+    skip_if_null: true
+
+  # Performed DateTime
+  - source: effectiveTime/@value
+    target: performedDateTime
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Performed Period (if range)
+  - source: effectiveTime/low/@value
+    target: performedPeriod.start
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: effectiveTime/high/@value
+    target: performedPeriod.end
+    transform: cda_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Performer
+  - source: performer/assignedEntity/id/@extension
+    target: performer[0].actor.identifier.value
+    skip_if_null: true
+
+  - source: performer/assignedEntity/assignedPerson/name/family
+    target: performer[0].actor.display
+    transform: concat_provider_name
+    skip_if_null: true
+
+  # Target Site (Body Site)
+  - source: targetSiteCode/@code
+    target: bodySite[0].coding[0].code
+    skip_if_null: true
+
+  - source: targetSiteCode/@displayName
+    target: bodySite[0].coding[0].display
+    skip_if_null: true
+
+  - source: targetSiteCode/@codeSystem
+    target: bodySite[0].coding[0].system
+    transform: oid_to_uri
+    skip_if_null: true
+
+  # Category (based on section)
+  - source: null
+    target: category.coding[0].code
+    default: "387713003"
+    target_context:
+      category.coding[0].system: "http://snomed.info/sct"
+      category.coding[0].display: Surgical procedure
+
+  # Notes
+  - source: text
+    target: note[0].text
+    skip_if_null: true
