@@ -1,0 +1,200 @@
+# Epic Clarity to FHIR R4 MedicationRequest Mapping
+# Maps Epic's ORDER_MED table to FHIR MedicationRequest resource
+
+source_system: epic_clarity
+source_table: ORDER_MED
+target_resource: MedicationRequest
+description: |
+  Maps Epic Clarity ORDER_MED (medication orders) to FHIR R4 MedicationRequest.
+  Covers inpatient and outpatient medication orders.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: ORDER_MED
+
+field_mappings:
+  # Primary identifier
+  - source: ORDER_MED_ID
+    target: id
+    transform: to_string
+
+  # Identifier
+  - source: ORDER_MED_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:epic:order_med"
+
+  # Status
+  - source: ORDER_STATUS_C
+    target: status
+    transform: epic_order_status_to_fhir
+    value_mapping:
+      1: active
+      2: active
+      3: on-hold
+      4: cancelled
+      5: completed
+      6: stopped
+      7: draft
+      9: entered-in-error
+
+  # Intent
+  - source: null
+    target: intent
+    transform: null
+    default: order
+
+  # Category (inpatient vs outpatient)
+  - source: IP_OR_OP_C
+    target: category[0].coding[0].code
+    transform: epic_ip_op_to_fhir
+    value_mapping:
+      1: inpatient
+      2: outpatient
+      3: community
+    target_context:
+      category[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/medicationrequest-category"
+
+  # Priority
+  - source: ORD_PRIO_C
+    target: priority
+    transform: epic_priority_to_fhir
+    value_mapping:
+      1: routine
+      2: urgent
+      3: asap
+      4: stat
+
+  # Medication - RxNorm
+  - source: RXNORM_CODE
+    target: medicationCodeableConcept.coding[0].code
+    transform: null
+    target_context:
+      medicationCodeableConcept.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  # Medication - NDC
+  - source: NDC_CODE
+    target: medicationCodeableConcept.coding[1].code
+    transform: null
+    target_context:
+      medicationCodeableConcept.coding[1].system: "http://hl7.org/fhir/sid/ndc"
+    skip_if_null: true
+
+  # Medication - display name
+  - source: MEDICATION_NAME
+    target: medicationCodeableConcept.text
+    transform: null
+
+  # Subject (patient)
+  - source: PAT_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  # Encounter
+  - source: PAT_ENC_CSN_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  # Authored date
+  - source: ORDER_INST
+    target: authoredOn
+    transform: datetime_to_fhir_datetime
+
+  # Requester (ordering provider)
+  - source: ORD_PROV_ID
+    target: requester.reference
+    transform: to_practitioner_reference
+
+  # Reason code
+  - source: ASSOC_DX_ID
+    target: reasonCode[0].coding[0].code
+    transform: lookup_icd10
+    skip_if_null: true
+
+  # Note
+  - source: ORD_COMMENTS
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+  # Dosage instruction - dose
+  - source: DOSE
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  # Dosage instruction - dose unit
+  - source: DOSE_UNIT_C
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.unit
+    transform: null
+    lookup_table: ZC_MED_UNIT
+    skip_if_null: true
+
+  # Dosage instruction - frequency
+  - source: FREQ_NAME
+    target: dosageInstruction[0].timing.code.text
+    transform: null
+    skip_if_null: true
+
+  # Dosage instruction - route
+  - source: MED_ROUTE_C
+    target: dosageInstruction[0].route.coding[0].code
+    transform: epic_route_to_snomed
+    lookup_table: ZC_MED_ROUTE
+    skip_if_null: true
+
+  # Dispense request - quantity
+  - source: DISPEN_QTY
+    target: dispenseRequest.quantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  # Dispense request - refills
+  - source: REFILL_COUNT
+    target: dispenseRequest.numberOfRepeatsAllowed
+    transform: to_integer
+    skip_if_null: true
+
+  # Dispense request - days supply
+  - source: DAYS_SUPPLY
+    target: dispenseRequest.expectedSupplyDuration.value
+    transform: to_decimal
+    skip_if_null: true
+    target_context:
+      dispenseRequest.expectedSupplyDuration.unit: days
+      dispenseRequest.expectedSupplyDuration.system: "http://unitsofmeasure.org"
+      dispenseRequest.expectedSupplyDuration.code: d
+
+  # Substitution allowed
+  - source: SUBSTITUTION_C
+    target: substitution.allowedBoolean
+    transform: epic_sub_to_boolean
+    value_mapping:
+      1: true   # Generic OK
+      2: false  # Dispense as written
+      3: true   # Therapeutic substitution OK
+
+required_joins:
+  - table: CLARITY_MEDICATION
+    join_on: ORDER_MED.MEDICATION_ID = CLARITY_MEDICATION.MEDICATION_ID
+    fields: [MEDICATION_NAME, RXNORM_CODE, NDC_CODE]
+
+  - table: ZC_ORDER_STATUS
+    join_on: ORDER_MED.ORDER_STATUS_C = ZC_ORDER_STATUS.ORDER_STATUS_C
+    fields: [NAME]
+
+  - table: ZC_MED_UNIT
+    join_on: ORDER_MED.DOSE_UNIT_C = ZC_MED_UNIT.MED_UNIT_C
+    fields: [NAME, ABBR]
+
+  - table: ZC_MED_ROUTE
+    join_on: ORDER_MED.MED_ROUTE_C = ZC_MED_ROUTE.MED_ROUTE_C
+    fields: [NAME, ABBR]
+
+  - table: PATIENT
+    join_on: ORDER_MED.PAT_ID = PATIENT.PAT_ID
+    fields: [PAT_MRN_ID]

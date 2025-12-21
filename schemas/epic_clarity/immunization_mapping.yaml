@@ -1,0 +1,176 @@
+# Epic Clarity to FHIR R4 Immunization Mapping
+# Maps Epic's IMMUNIZATIONS table to FHIR Immunization resource
+
+source_system: epic_clarity
+source_table: IMMUNIZATION
+target_resource: Immunization
+description: |
+  Maps Epic Clarity IMMUNIZATION table to FHIR R4 Immunization.
+  Covers administered and historical immunizations.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: IMMUNIZATION
+
+field_mappings:
+  # Primary identifier
+  - source: IMM_ID
+    target: id
+    transform: to_string
+
+  # Identifier
+  - source: IMM_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:epic:immunization"
+
+  # Status
+  - source: IMM_STATUS_C
+    target: status
+    transform: epic_imm_status_to_fhir
+    value_mapping:
+      1: completed
+      2: entered-in-error
+      3: not-done
+
+  # Status reason (if not done)
+  - source: REFUSE_REASON_C
+    target: statusReason.coding[0].code
+    transform: null
+    lookup_table: ZC_REFUSE_REASON
+    skip_if_null: true
+
+  # Vaccine code - CVX
+  - source: CVX_CODE
+    target: vaccineCode.coding[0].code
+    transform: null
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+
+  # Vaccine code - display name
+  - source: IMMUNIZATION_NAME
+    target: vaccineCode.text
+    transform: null
+
+  # Subject (patient)
+  - source: PAT_ID
+    target: patient.reference
+    transform: to_patient_reference
+
+  # Encounter
+  - source: PAT_ENC_CSN_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  # Occurrence date
+  - source: IMMUNE_DATE
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  # Recorded date
+  - source: RECORDED_DATE
+    target: recorded
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Primary source
+  - source: HISTORICAL_YN
+    target: primarySource
+    transform: null
+    value_mapping:
+      Y: false
+      N: true
+
+  # Location
+  - source: DEPARTMENT_ID
+    target: location.reference
+    transform: to_location_reference
+    skip_if_null: true
+
+  # Manufacturer
+  - source: MANUFACTURER_NAME
+    target: manufacturer.display
+    transform: null
+    skip_if_null: true
+
+  # Lot number
+  - source: LOT_NUMBER
+    target: lotNumber
+    transform: null
+    skip_if_null: true
+
+  # Expiration date
+  - source: EXPIRATION_DATE
+    target: expirationDate
+    transform: date_to_fhir_date
+    skip_if_null: true
+
+  # Site
+  - source: BODY_SITE_C
+    target: site.coding[0].code
+    transform: epic_body_site_to_snomed
+    lookup_table: ZC_IMM_BODY_SITE
+    skip_if_null: true
+
+  # Route
+  - source: ROUTE_C
+    target: route.coding[0].code
+    transform: epic_route_to_snomed
+    lookup_table: ZC_IMM_ROUTE
+    skip_if_null: true
+
+  # Dose quantity
+  - source: DOSE_AMOUNT
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  # Performer
+  - source: GIVEN_BY_USER_ID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+    target_context:
+      performer[0].function.coding[0].code: "AP"
+      performer[0].function.coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0443"
+
+  # Note
+  - source: IMM_COMMENT
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+  # Reason code
+  - source: REASON_C
+    target: reasonCode[0].coding[0].code
+    transform: null
+    lookup_table: ZC_IMM_REASON
+    skip_if_null: true
+
+  # Protocol applied - dose number
+  - source: DOSE_NUM
+    target: protocolApplied[0].doseNumberPositiveInt
+    transform: to_integer
+    skip_if_null: true
+
+  # Protocol applied - series
+  - source: SERIES_NAME
+    target: protocolApplied[0].series
+    transform: null
+    skip_if_null: true
+
+required_joins:
+  - table: CLARITY_IMMUNIZATION
+    join_on: IMMUNIZATION.IMMUNE_ID = CLARITY_IMMUNIZATION.IMMUNE_ID
+    fields: [IMMUNIZATION_NAME, CVX_CODE]
+
+  - table: ZC_IMM_STATUS
+    join_on: IMMUNIZATION.IMM_STATUS_C = ZC_IMM_STATUS.IMM_STATUS_C
+    fields: [NAME]
+
+  - table: PATIENT
+    join_on: IMMUNIZATION.PAT_ID = PATIENT.PAT_ID
+    fields: [PAT_MRN_ID]

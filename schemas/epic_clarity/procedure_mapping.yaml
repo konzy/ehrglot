@@ -1,0 +1,153 @@
+# Epic Clarity to FHIR R4 Procedure Mapping
+# Maps Epic's OR_LOG and ORDER_PROC tables to FHIR Procedure resource
+
+source_system: epic_clarity
+source_table: OR_LOG
+target_resource: Procedure
+description: |
+  Maps Epic Clarity OR_LOG (surgical procedures) to FHIR R4 Procedure.
+  Also covers ORDER_PROC for non-surgical procedures.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: OR_LOG
+
+field_mappings:
+  # Primary identifier
+  - source: LOG_ID
+    target: id
+    transform: to_string
+
+  # Identifier
+  - source: LOG_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:epic:orlog"
+
+  # Status
+  - source: CASE_STATUS_C
+    target: status
+    transform: epic_case_status_to_fhir
+    value_mapping:
+      1: preparation
+      2: in-progress
+      3: completed
+      4: not-done
+      5: entered-in-error
+
+  # Category
+  - source: SERVICE_C
+    target: category.coding[0].code
+    transform: null
+    lookup_table: ZC_OR_SERVICE
+    target_context:
+      category.coding[0].system: "http://snomed.info/sct"
+
+  # Code - CPT
+  - source: PRIMARY_CPT_CODE
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+
+  # Code - display name
+  - source: PROC_NAME
+    target: code.text
+    transform: null
+
+  # Subject (patient)
+  - source: PAT_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  # Encounter
+  - source: PAT_ENC_CSN_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  # Performed period - start
+  - source: SURGERY_DATE
+    target: performedPeriod.start
+    transform: datetime_to_fhir_datetime
+
+  # Performed period - end
+  - source: ANES_STOP_DTTM
+    target: performedPeriod.end
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Recorder
+  - source: ENTRY_USER_ID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  # Performer - primary surgeon
+  - source: PRIM_SURGEON_PROV_ID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    target_context:
+      performer[0].function.coding[0].code: "primary-surgeon"
+      performer[0].function.coding[0].system: "http://snomed.info/sct"
+
+  # Performer - anesthesiologist
+  - source: ANES_PROV_ID
+    target: performer[1].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+    target_context:
+      performer[1].function.coding[0].code: "anesthesiologist"
+      performer[1].function.coding[0].system: "http://snomed.info/sct"
+
+  # Location
+  - source: ROOM_ID
+    target: location.reference
+    transform: to_location_reference
+    skip_if_null: true
+
+  # Body site
+  - source: LATERALITY_C
+    target: bodySite[0].coding[0].code
+    transform: epic_laterality_to_snomed
+    skip_if_null: true
+    target_context:
+      bodySite[0].coding[0].system: "http://snomed.info/sct"
+
+  # Reason code
+  - source: PRIMARY_DX_ID
+    target: reasonCode[0].coding[0].code
+    transform: lookup_icd10
+    skip_if_null: true
+
+  # Note
+  - source: BRIEF_OP_NOTE
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+  # Outcome
+  - source: CASE_OUTCOME_C
+    target: outcome.coding[0].code
+    transform: null
+    lookup_table: ZC_CASE_OUTCOME
+    skip_if_null: true
+
+required_joins:
+  - table: OR_PROC
+    join_on: OR_LOG.LOG_ID = OR_PROC.LOG_ID
+    fields: [PROC_ID, PROC_NAME, PRIMARY_CPT_CODE]
+
+  - table: ZC_CASE_STATUS
+    join_on: OR_LOG.CASE_STATUS_C = ZC_CASE_STATUS.CASE_STATUS_C
+    fields: [NAME]
+
+  - table: PATIENT
+    join_on: OR_LOG.PAT_ID = PATIENT.PAT_ID
+    fields: [PAT_MRN_ID]
+
+  - table: CLARITY_DEP
+    join_on: OR_LOG.DEPARTMENT_ID = CLARITY_DEP.DEPARTMENT_ID
+    fields: [DEPARTMENT_NAME]

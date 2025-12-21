@@ -1,0 +1,161 @@
+# Epic Clarity to FHIR R4 DiagnosticReport Mapping
+# Maps Epic's ORDER_PROC table to FHIR DiagnosticReport resource
+
+source_system: epic_clarity
+source_table: ORDER_PROC
+target_resource: DiagnosticReport
+description: |
+  Maps Epic Clarity ORDER_PROC (lab and imaging orders) to FHIR R4 DiagnosticReport.
+  Covers laboratory panels, imaging studies, and other diagnostic procedures.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: ORDER_PROC
+
+field_mappings:
+  # Primary identifier
+  - source: ORDER_PROC_ID
+    target: id
+    transform: to_string
+
+  # Identifier - accession number
+  - source: ACCESSION_NUM
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "urn:oid:epic:accession"
+      identifier[0].type.coding[0].code: "ACSN"
+    skip_if_null: true
+
+  # Identifier - order ID
+  - source: ORDER_PROC_ID
+    target: identifier[1].value
+    transform: to_string
+    target_context:
+      identifier[1].system: "urn:oid:epic:order_proc"
+
+  # Status
+  - source: ORDER_STATUS_C
+    target: status
+    transform: epic_order_status_to_report_status
+    value_mapping:
+      1: registered
+      2: partial
+      3: preliminary
+      5: final
+      6: amended
+      7: corrected
+      8: cancelled
+      9: entered-in-error
+
+  # Category - laboratory
+  - source: PROC_CAT_ID
+    target: category[0].coding[0].code
+    transform: epic_proc_cat_to_fhir
+    value_mapping:
+      1: LAB    # Laboratory
+      2: RAD    # Radiology
+      3: PATH   # Pathology
+      4: CARD   # Cardiology
+    target_context:
+      category[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0074"
+
+  # Code - LOINC
+  - source: PROC_LNC_ID
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  # Code - CPT
+  - source: CPT_CODE
+    target: code.coding[1].code
+    transform: null
+    target_context:
+      code.coding[1].system: "http://www.ama-assn.org/go/cpt"
+    skip_if_null: true
+
+  # Code - display name
+  - source: PROC_NAME
+    target: code.text
+    transform: null
+
+  # Subject (patient)
+  - source: PAT_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  # Encounter
+  - source: PAT_ENC_CSN_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  # Effective date/time (specimen collection)
+  - source: SPECIMEN_COLLECT_DTTM
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Issued (result time)
+  - source: RESULT_TIME
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  # Performer
+  - source: AUTHRZING_PROV_ID
+    target: performer[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  # Results interpreter
+  - source: RESULT_PROV_ID
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  # Specimen
+  - source: SPECIMEN_ID
+    target: specimen[0].reference
+    transform: to_specimen_reference
+    skip_if_null: true
+
+  # Result observations (linked)
+  - source: ORDER_PROC_ID
+    target: result
+    transform: lookup_observations
+    description: Links to individual Observation resources from ORDER_RESULTS
+
+  # Conclusion
+  - source: RESULT_NARRATIVE
+    target: conclusion
+    transform: null
+    skip_if_null: true
+
+  # Presented form (PDF report)
+  - source: REPORT_DOC_ID
+    target: presentedForm[0].url
+    transform: to_document_url
+    skip_if_null: true
+    target_context:
+      presentedForm[0].contentType: "application/pdf"
+
+required_joins:
+  - table: CLARITY_EAP
+    join_on: ORDER_PROC.PROC_ID = CLARITY_EAP.PROC_ID
+    fields: [PROC_NAME, PROC_LNC_ID, CPT_CODE]
+
+  - table: ZC_ORDER_STATUS
+    join_on: ORDER_PROC.ORDER_STATUS_C = ZC_ORDER_STATUS.ORDER_STATUS_C
+    fields: [NAME]
+
+  - table: PATIENT
+    join_on: ORDER_PROC.PAT_ID = PATIENT.PAT_ID
+    fields: [PAT_MRN_ID]
+
+  - table: ORDER_SPECIMEN
+    join_on: ORDER_PROC.ORDER_PROC_ID = ORDER_SPECIMEN.ORDER_ID
+    fields: [SPECIMEN_ID, SPECIMEN_COLLECT_DTTM]

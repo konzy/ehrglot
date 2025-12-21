@@ -1,0 +1,134 @@
+# Epic Clarity to FHIR R4 Encounter Mapping
+# Maps Epic's PAT_ENC table to FHIR Encounter resource
+
+source_system: epic_clarity
+source_table: PAT_ENC
+target_resource: Encounter
+description: |
+  Maps Epic Clarity PAT_ENC (Patient Encounter) table to FHIR R4 Encounter.
+  Includes encounter type, status, admission/discharge dates, and location.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: PAT_ENC
+
+field_mappings:
+  # Primary identifier
+  - source: PAT_ENC_CSN_ID
+    target: id
+    transform: to_string
+    description: Contact Serial Number - Epic's unique encounter ID
+
+  # Encounter identifier
+  - source: PAT_ENC_CSN_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:epic:csn"
+      identifier[0].type.coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0203"
+      identifier[0].type.coding[0].code: "VN"
+
+  # Status
+  - source: ENC_CLOSED_YN
+    target: status
+    transform: epic_enc_status_to_fhir
+    value_mapping:
+      Y: finished
+      N: in-progress
+
+  # Class (inpatient, outpatient, emergency, etc.)
+  - source: ENC_TYPE_C
+    target: class.code
+    transform: epic_enc_type_to_fhir_class
+    lookup_table: ZC_DISP_ENC_TYPE
+    value_mapping:
+      1: IMP      # Inpatient
+      2: AMB      # Ambulatory/Outpatient
+      3: EMER     # Emergency
+      4: HH       # Home Health
+      5: IMP      # Inpatient Rehab
+      50: VR      # Virtual
+
+  # Type
+  - source: APPT_TYPE_C
+    target: type[0].coding[0].code
+    transform: null
+    lookup_table: ZC_APPT_TYPE
+
+  # Subject (patient reference)
+  - source: PAT_ID
+    target: subject.reference
+    transform: to_patient_reference
+    description: Reference to Patient resource
+
+  # Period - start
+  - source: CONTACT_DATE
+    target: period.start
+    transform: datetime_to_fhir_datetime
+
+  # Period - end (for closed encounters)
+  - source: HOSP_DISCH_TIME
+    target: period.end
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Admission date/time
+  - source: HOSP_ADMSN_TIME
+    target: period.start
+    transform: datetime_to_fhir_datetime
+    condition: "ENC_TYPE_C IN (1, 5)"  # Only for inpatient
+
+  # Reason for visit
+  - source: REASON_VISIT_NAME
+    target: reasonCode[0].text
+    transform: null
+    skip_if_null: true
+
+  # Primary diagnosis
+  - source: PRIMARY_DX_ID
+    target: diagnosis[0].condition.reference
+    transform: to_condition_reference
+    skip_if_null: true
+
+  # Attending provider
+  - source: VISIT_PROV_ID
+    target: participant[0].individual.reference
+    transform: to_practitioner_reference
+    target_context:
+      participant[0].type[0].coding[0].code: "ATND"
+      participant[0].type[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+
+  # Location - department
+  - source: DEPARTMENT_ID
+    target: location[0].location.reference
+    transform: to_location_reference
+
+  # Discharge disposition
+  - source: DISCH_DISP_C
+    target: hospitalization.dischargeDisposition.coding[0].code
+    transform: epic_disch_disp_to_fhir
+    lookup_table: ZC_DISCH_DISP
+    skip_if_null: true
+
+  # Service provider organization
+  - source: SERV_AREA_ID
+    target: serviceProvider.reference
+    transform: to_organization_reference
+
+required_joins:
+  - table: ZC_DISP_ENC_TYPE
+    join_on: PAT_ENC.ENC_TYPE_C = ZC_DISP_ENC_TYPE.DISP_ENC_TYPE_C
+    fields: [NAME, ABBR]
+
+  - table: ZC_APPT_TYPE
+    join_on: PAT_ENC.APPT_TYPE_C = ZC_APPT_TYPE.APPT_TYPE_C
+    fields: [NAME]
+
+  - table: ZC_DISCH_DISP
+    join_on: PAT_ENC.DISCH_DISP_C = ZC_DISCH_DISP.DISCH_DISP_C
+    fields: [NAME, ABBR]
+
+  - table: CLARITY_DEP
+    join_on: PAT_ENC.DEPARTMENT_ID = CLARITY_DEP.DEPARTMENT_ID
+    fields: [DEPARTMENT_NAME, SERV_AREA_ID]

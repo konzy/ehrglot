@@ -1,0 +1,159 @@
+# Epic Clarity to FHIR R4 AllergyIntolerance Mapping
+# Maps Epic's ALLERGY table to FHIR AllergyIntolerance resource
+
+source_system: epic_clarity
+source_table: ALLERGY
+target_resource: AllergyIntolerance
+description: |
+  Maps Epic Clarity ALLERGY table to FHIR R4 AllergyIntolerance.
+  Covers documented allergies and intolerances.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: ALLERGY
+
+field_mappings:
+  # Primary identifier
+  - source: ALLERGY_ID
+    target: id
+    transform: to_string
+
+  # Identifier
+  - source: ALLERGY_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:epic:allergy"
+
+  # Clinical status
+  - source: ALLERGY_STAT_C
+    target: clinicalStatus.coding[0].code
+    transform: epic_allergy_status_to_fhir
+    value_mapping:
+      1: active
+      2: inactive
+      3: resolved
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  # Verification status
+  - source: ALLERGY_VER_C
+    target: verificationStatus.coding[0].code
+    transform: epic_allergy_ver_to_fhir
+    value_mapping:
+      1: confirmed
+      2: unconfirmed
+      3: refuted
+    target_context:
+      verificationStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+
+  # Type
+  - source: ALLERGY_TYPE_C
+    target: type
+    transform: epic_allergy_type_to_fhir
+    value_mapping:
+      1: allergy
+      2: intolerance
+
+  # Category
+  - source: ALLERGEN_TYPE_C
+    target: category[0]
+    transform: epic_allergen_type_to_fhir
+    value_mapping:
+      1: medication
+      2: food
+      3: environment
+      4: biologic
+
+  # Criticality
+  - source: SEVERITY_C
+    target: criticality
+    transform: epic_severity_to_criticality
+    value_mapping:
+      1: low
+      2: high
+      3: unable-to-assess
+
+  # Code - allergen
+  - source: ALLERGEN_ID
+    target: code.coding[0].code
+    transform: to_string
+    target_context:
+      code.coding[0].system: "urn:oid:epic:allergen"
+
+  # Code - RxNorm (for medication allergies)
+  - source: RXNORM_CODE
+    target: code.coding[1].code
+    transform: null
+    target_context:
+      code.coding[1].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  # Code - display name
+  - source: ALLERGEN_NAME
+    target: code.text
+    transform: null
+
+  # Subject (patient)
+  - source: PAT_ID
+    target: patient.reference
+    transform: to_patient_reference
+
+  # Encounter when first noted
+  - source: NOTED_ENC_CSN_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  # Onset date
+  - source: REACTION_DATE
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Recorded date
+  - source: DATE_NOTED
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  # Recorder
+  - source: ENTRY_USER_ID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  # Reaction manifestation
+  - source: REACTIONS
+    target: reaction[0].manifestation[0].text
+    transform: null
+    skip_if_null: true
+
+  # Reaction severity
+  - source: REACTION_SEVERITY_C
+    target: reaction[0].severity
+    transform: epic_reaction_severity_to_fhir
+    value_mapping:
+      1: mild
+      2: moderate
+      3: severe
+    skip_if_null: true
+
+  # Note
+  - source: ALLERGY_CMT
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+required_joins:
+  - table: CLARITY_ALLERGEN
+    join_on: ALLERGY.ALLERGEN_ID = CLARITY_ALLERGEN.ALLERGEN_ID
+    fields: [ALLERGEN_NAME, RXNORM_CODE, ALLERGEN_TYPE_C]
+
+  - table: ZC_ALLERGY_STATUS
+    join_on: ALLERGY.ALLERGY_STAT_C = ZC_ALLERGY_STATUS.ALLERGY_STAT_C
+    fields: [NAME]
+
+  - table: PATIENT
+    join_on: ALLERGY.PAT_ID = PATIENT.PAT_ID
+    fields: [PAT_MRN_ID]

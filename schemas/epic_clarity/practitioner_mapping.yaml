@@ -1,0 +1,145 @@
+# Epic Clarity to FHIR R4 Practitioner Mapping
+# Maps Epic's CLARITY_SER table to FHIR Practitioner resource
+
+source_system: epic_clarity
+source_table: CLARITY_SER
+target_resource: Practitioner
+description: |
+  Maps Epic Clarity CLARITY_SER (service provider) table to FHIR R4 Practitioner.
+  Contains physicians, nurses, and other healthcare providers.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: CLARITY_SER
+
+field_mappings:
+  # Primary identifier
+  - source: PROV_ID
+    target: id
+    transform: to_string
+
+  # NPI identifier
+  - source: NPI
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "http://hl7.org/fhir/sid/us-npi"
+      identifier[0].type.coding[0].code: "NPI"
+    skip_if_null: true
+
+  # DEA identifier
+  - source: DEA_NUMBER
+    target: identifier[1].value
+    transform: null
+    target_context:
+      identifier[1].system: "urn:oid:2.16.840.1.113883.4.814"
+      identifier[1].type.coding[0].code: "DEA"
+    skip_if_null: true
+
+  # Internal Epic ID
+  - source: PROV_ID
+    target: identifier[2].value
+    transform: to_string
+    target_context:
+      identifier[2].system: "urn:oid:epic:provider"
+
+  # Active status
+  - source: ACTIVE_STATUS_C
+    target: active
+    transform: null
+    value_mapping:
+      1: true
+      2: false
+
+  # Name - given
+  - source: PROV_FIRST_NAME
+    target: name[0].given[0]
+    transform: null
+
+  # Name - family
+  - source: PROV_LAST_NAME
+    target: name[0].family
+    transform: null
+
+  # Name - prefix (Dr., etc.)
+  - source: PROV_TITLE
+    target: name[0].prefix[0]
+    transform: null
+    skip_if_null: true
+
+  # Name - suffix (MD, DO, etc.)
+  - source: CREDENTIALS
+    target: name[0].suffix[0]
+    transform: null
+    skip_if_null: true
+
+  # Telecom - work phone
+  - source: WORK_PHONE
+    target: telecom[0].value
+    transform: normalize_phone
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: work
+    skip_if_null: true
+
+  # Telecom - email
+  - source: EMAIL
+    target: telecom[1].value
+    transform: null
+    target_context:
+      telecom[1].system: email
+      telecom[1].use: work
+    skip_if_null: true
+
+  # Address
+  - source: ADDR_LINE_1
+    target: address[0].line[0]
+    transform: null
+    skip_if_null: true
+
+  - source: CITY
+    target: address[0].city
+    transform: null
+    skip_if_null: true
+
+  - source: STATE_C
+    target: address[0].state
+    transform: epic_state_code_to_abbreviation
+    skip_if_null: true
+
+  - source: ZIP
+    target: address[0].postalCode
+    transform: null
+    skip_if_null: true
+
+  # Gender
+  - source: SEX_C
+    target: gender
+    transform: epic_sex_to_fhir_gender
+    value_mapping:
+      1: male
+      2: female
+      3: other
+    skip_if_null: true
+
+  # Qualification - primary specialty
+  - source: SPECIALTY_1
+    target: qualification[0].code.text
+    transform: null
+    skip_if_null: true
+
+  # Communication language
+  - source: LANGUAGE_C
+    target: communication[0].coding[0].code
+    transform: epic_language_to_bcp47
+    skip_if_null: true
+
+required_joins:
+  - table: ZC_STATE
+    join_on: CLARITY_SER.STATE_C = ZC_STATE.STATE_C
+    fields: [ABBR, NAME]
+
+  - table: ZC_SPECIALTY
+    join_on: CLARITY_SER.SPECIALTY_1 = ZC_SPECIALTY.SPECIALTY_C
+    fields: [NAME]

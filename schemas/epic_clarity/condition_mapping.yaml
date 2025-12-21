@@ -1,0 +1,134 @@
+# Epic Clarity to FHIR R4 Condition Mapping
+# Maps Epic's PROBLEM_LIST and HSP_ADMIT_DIAG tables to FHIR Condition resource
+
+source_system: epic_clarity
+source_table: PROBLEM_LIST
+target_resource: Condition
+description: |
+  Maps Epic Clarity PROBLEM_LIST (problem list diagnoses) to FHIR R4 Condition.
+  Also supports HSP_ADMIT_DIAG for encounter diagnoses.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: PROBLEM_LIST
+
+field_mappings:
+  # Primary identifier
+  - source: PROBLEM_LIST_ID
+    target: id
+    transform: to_string
+
+  # Identifier
+  - source: PROBLEM_LIST_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:epic:problem"
+
+  # Clinical status
+  - source: PROBLEM_STATUS_C
+    target: clinicalStatus.coding[0].code
+    transform: epic_problem_status_to_fhir
+    value_mapping:
+      1: active
+      2: inactive
+      3: resolved
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-clinical"
+
+  # Verification status
+  - source: null
+    target: verificationStatus.coding[0].code
+    transform: null
+    default: confirmed
+    target_context:
+      verificationStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-ver-status"
+
+  # Category - problem list item
+  - source: null
+    target: category[0].coding[0].code
+    transform: null
+    default: problem-list-item
+    target_context:
+      category[0].coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-category"
+
+  # Code - ICD-10
+  - source: CURRENT_ICD10_LIST
+    target: code.coding[0].code
+    transform: extract_first_icd10
+    target_context:
+      code.coding[0].system: "http://hl7.org/fhir/sid/icd-10-cm"
+
+  # Code - SNOMED CT (if available)
+  - source: DX_ID
+    target: code.coding[1].code
+    transform: lookup_snomed
+    target_context:
+      code.coding[1].system: "http://snomed.info/sct"
+    skip_if_null: true
+
+  # Code - display name
+  - source: PROBLEM_NAME
+    target: code.text
+    transform: null
+
+  # Subject (patient)
+  - source: PAT_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  # Encounter
+  - source: NOTED_ENC_CSN_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  # Onset date
+  - source: DATE_OF_ENTRY
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+
+  # Abatement date (for resolved conditions)
+  - source: RESOLVED_DATE
+    target: abatementDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Recorded date
+  - source: DATE_OF_ENTRY
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  # Recorder
+  - source: ENTRY_USER_ID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  # Note
+  - source: PROBLEM_CMT
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+  # Severity (if available)
+  - source: SEVERITY_C
+    target: severity.coding[0].code
+    transform: epic_severity_to_snomed
+    skip_if_null: true
+    target_context:
+      severity.coding[0].system: "http://snomed.info/sct"
+
+required_joins:
+  - table: CLARITY_EDG
+    join_on: PROBLEM_LIST.DX_ID = CLARITY_EDG.DX_ID
+    fields: [DX_NAME, CURRENT_ICD10_LIST, SNOMED_CT_ID]
+
+  - table: ZC_PROBLEM_STATUS
+    join_on: PROBLEM_LIST.PROBLEM_STATUS_C = ZC_PROBLEM_STATUS.PROBLEM_STATUS_C
+    fields: [NAME]
+
+  - table: PATIENT
+    join_on: PROBLEM_LIST.PAT_ID = PATIENT.PAT_ID
+    fields: [PAT_MRN_ID]
