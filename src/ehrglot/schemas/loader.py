@@ -26,7 +26,12 @@ if TYPE_CHECKING:
 
 @dataclass
 class FHIRField:
-    """Represents a field in a FHIR resource schema."""
+    """Represents a field in a FHIR resource schema.
+
+    For BackboneElement types, nested child fields can be defined in the
+    `fields` attribute. Child fields inherit PII settings from parent unless
+    explicitly overridden.
+    """
 
     name: str
     type: str
@@ -39,6 +44,7 @@ class FHIRField:
     description: str = ""
     enum: list[str] | None = None
     default: Any = None
+    fields: list[FHIRField] | None = None  # Nested fields for BackboneElements
 
 
 @dataclass
@@ -199,6 +205,48 @@ class SchemaLoader:
                     if field_override.masking_params:
                         masking_params = {**masking_params, **field_override.masking_params}
 
+            # Parse nested fields for BackboneElements (children inherit parent PII settings)
+            nested_fields: list[FHIRField] | None = None
+            if "fields" in field_data:
+                nested_fields = []
+                for child_data in field_data["fields"]:
+                    # Child fields inherit parent PII settings unless explicitly set
+                    child_pii_level = _parse_pii_level(child_data.get("pii_level"))
+                    child_pii_category = _parse_pii_category(child_data.get("pii_category"))
+                    child_hipaa = _parse_hipaa_identifier(child_data.get("hipaa_identifier"))
+                    child_masking = _parse_masking_strategy(child_data.get("masking_strategy"))
+                    child_params = child_data.get("masking_params", {})
+
+                    # Inherit from parent if not explicitly set
+                    if child_pii_level == PIILevel.NONE and pii_level != PIILevel.NONE:
+                        child_pii_level = pii_level
+                    if child_pii_category == PIICategory.NONE and pii_category != PIICategory.NONE:
+                        child_pii_category = pii_category
+                    if child_hipaa is None and hipaa_identifier is not None:
+                        child_hipaa = hipaa_identifier
+                    if (
+                        child_masking == MaskingStrategy.NONE
+                        and masking_strategy != MaskingStrategy.NONE
+                    ):
+                        child_masking = masking_strategy
+                    if not child_params and masking_params:
+                        child_params = masking_params.copy()
+
+                    child_field = FHIRField(
+                        name=child_data["name"],
+                        type=child_data["type"],
+                        required=child_data.get("required", False),
+                        pii_level=child_pii_level,
+                        pii_category=child_pii_category,
+                        hipaa_identifier=child_hipaa,
+                        masking_strategy=child_masking,
+                        masking_params=child_params,
+                        description=child_data.get("description", ""),
+                        enum=child_data.get("enum"),
+                        default=child_data.get("default"),
+                    )
+                    nested_fields.append(child_field)
+
             fhir_field = FHIRField(
                 name=field_name,
                 type=field_data["type"],
@@ -211,6 +259,7 @@ class SchemaLoader:
                 description=field_data.get("description", ""),
                 enum=field_data.get("enum"),
                 default=field_data.get("default"),
+                fields=nested_fields,
             )
             fields.append(fhir_field)
 

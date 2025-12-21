@@ -71,6 +71,18 @@ fields:
     pii_category: geographic
     hipaa_identifier: geographic_data
     masking_strategy: suppress
+    fields:
+      - name: longitude
+        type: decimal
+        required: true
+        description: Longitude with WGS84 datum
+      - name: latitude
+        type: decimal
+        required: true
+        description: Latitude with WGS84 datum
+      - name: altitude
+        type: decimal
+        description: Altitude with WGS84 datum
 
   - name: managingOrganization
     type: Reference
@@ -83,6 +95,20 @@ fields:
   - name: hoursOfOperation
     type: array<BackboneElement>
     description: Hours of operation
+    fields:
+      - name: daysOfWeek
+        type: array<code>
+        enum: [mon, tue, wed, thu, fri, sat, sun]
+        description: Days of week
+      - name: allDay
+        type: boolean
+        description: Always available
+      - name: openingTime
+        type: time
+        description: Opening time of day
+      - name: closingTime
+        type: time
+        description: Closing time of day
 
   - name: availabilityExceptions
     type: string
