@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
-from ehrglot.core.types import SchemaMapping
+from ehrglot.core.types import BidirectionalMapping, FieldMapping, SchemaMapping
 
 
 @dataclass
@@ -284,3 +284,135 @@ class SchemaMapper:
             func: Transform function.
         """
         self.transforms[name] = func
+
+
+def generate_reverse_mappings(forward_mappings: list[FieldMapping]) -> list[FieldMapping]:
+    """Generate reverse mappings by inverting source/target.
+
+    Args:
+        forward_mappings: List of forward field mappings.
+
+    Returns:
+        List of inverted field mappings.
+    """
+    reverse = []
+    for fm in forward_mappings:
+        # Skip complex expressions that can't be auto-reversed
+        if fm.source and fm.target and "+" not in fm.source and "[" not in fm.source:
+            reverse.append(
+                FieldMapping(
+                    source=fm.target,
+                    target=fm.source,
+                    transform=None,
+                    default_value=None,
+                )
+            )
+    return reverse
+
+
+class BidirectionalMapper:
+    """Maps data bidirectionally between two schemas.
+
+    Supports conversion in both directions:
+    - forward(): source_schema → target_schema
+    - reverse(): target_schema → source_schema
+
+    Example:
+        >>> bimap = BidirectionalMapper(bidirectional_mapping)
+        >>> fhir_patient = bimap.forward(warehouse_row)
+        >>> warehouse_row = bimap.reverse(fhir_patient)
+    """
+
+    def __init__(
+        self,
+        mapping: BidirectionalMapping,
+        transforms: dict[str, Callable[..., Any]] | None = None,
+    ) -> None:
+        """Initialize bidirectional mapper.
+
+        Args:
+            mapping: BidirectionalMapping definition.
+            transforms: Additional transform functions.
+        """
+        self.mapping = mapping
+        self.transforms = {**TRANSFORM_REGISTRY}
+        if transforms:
+            self.transforms.update(transforms)
+
+        # Create forward mapper
+        self._forward_mapping = SchemaMapping(
+            source_system=mapping.source_schema,
+            source_table="",
+            target_resource=mapping.target_schema,
+            field_mappings=mapping.field_mappings,
+            description=mapping.description,
+        )
+        self._forward_mapper = SchemaMapper(self._forward_mapping, self.transforms)
+
+        # Create reverse mapper
+        reverse_mappings = mapping.reverse_field_mappings
+        if not reverse_mappings and mapping.auto_reverse:
+            reverse_mappings = generate_reverse_mappings(mapping.field_mappings)
+
+        self._reverse_mapping = SchemaMapping(
+            source_system=mapping.target_schema,
+            source_table="",
+            target_resource=mapping.source_schema,
+            field_mappings=reverse_mappings,
+            description=f"Reverse of: {mapping.description}",
+        )
+        self._reverse_mapper = SchemaMapper(self._reverse_mapping, self.transforms)
+
+    def forward(
+        self,
+        source_row: dict[str, Any],
+        lookup_tables: dict[str, dict[str, Any]] | None = None,
+    ) -> tuple[dict[str, Any], list[str]]:
+        """Map data from source to target schema.
+
+        Args:
+            source_row: Data in source schema format.
+            lookup_tables: Optional lookup tables.
+
+        Returns:
+            Tuple of (target row, errors).
+        """
+        return self._forward_mapper.map_row(source_row, lookup_tables)
+
+    def reverse(
+        self,
+        target_row: dict[str, Any],
+        lookup_tables: dict[str, dict[str, Any]] | None = None,
+    ) -> tuple[dict[str, Any], list[str]]:
+        """Map data from target back to source schema.
+
+        Args:
+            target_row: Data in target schema format.
+            lookup_tables: Optional lookup tables.
+
+        Returns:
+            Tuple of (source row, errors).
+        """
+        return self._reverse_mapper.map_row(target_row, lookup_tables)
+
+    def forward_dataset(
+        self,
+        source_rows: list[dict[str, Any]],
+        lookup_tables: dict[str, dict[str, Any]] | None = None,
+    ) -> tuple[list[dict[str, Any]], list[tuple[int, list[str]]]]:
+        """Map dataset from source to target schema."""
+        return self._forward_mapper.map_dataset(source_rows, lookup_tables)
+
+    def reverse_dataset(
+        self,
+        target_rows: list[dict[str, Any]],
+        lookup_tables: dict[str, dict[str, Any]] | None = None,
+    ) -> tuple[list[dict[str, Any]], list[tuple[int, list[str]]]]:
+        """Map dataset from target back to source schema."""
+        return self._reverse_mapper.map_dataset(target_rows, lookup_tables)
+
+    def register_transform(self, name: str, func: Callable[..., Any]) -> None:
+        """Register a custom transform function for both directions."""
+        self.transforms[name] = func
+        self._forward_mapper.register_transform(name, func)
+        self._reverse_mapper.register_transform(name, func)

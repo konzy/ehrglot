@@ -1,0 +1,102 @@
+# Example Custom Schema: Data Warehouse Patient
+# This demonstrates how third parties can define their own schemas
+
+name: data_warehouse
+version: "1.0"
+namespace: custom
+description: |
+  Example data warehouse patient schema for demonstration.
+  Organizations can define their own field names, types, and PII settings.
+
+fields:
+  - name: patient_key
+    type: string
+    required: true
+    description: Internal data warehouse patient identifier
+
+  - name: full_name
+    type: string
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: names
+    masking_strategy: redact
+    description: Combined full name
+
+  - name: date_of_birth
+    type: date
+    pii_level: high
+    pii_category: quasi_identifier
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    description: Patient date of birth
+
+  - name: gender_code
+    type: string
+    description: Gender code (M/F/O/U)
+
+  - name: ssn_last4
+    type: string
+    pii_level: critical
+    pii_category: direct_identifier
+    hipaa_identifier: ssn
+    masking_strategy: partial
+    masking_params:
+      visible_chars: 4
+    description: Last 4 digits of SSN
+
+  - name: primary_phone
+    type: string
+    pii_level: medium
+    pii_category: direct_identifier
+    hipaa_identifier: phone_numbers
+    masking_strategy: partial
+    description: Primary contact phone
+
+  - name: email
+    type: string
+    pii_level: medium
+    pii_category: direct_identifier
+    hipaa_identifier: email_addresses
+    masking_strategy: hash
+    description: Email address
+
+  - name: address_line1
+    type: string
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: geographic
+    masking_strategy: redact
+
+  - name: city
+    type: string
+    pii_level: low
+
+  - name: state_code
+    type: string
+    description: Two-letter state code
+
+  - name: zip_code
+    type: string
+    pii_level: medium
+    pii_category: quasi_identifier
+    hipaa_identifier: geographic
+    masking_strategy: generalize
+    masking_params:
+      keep_chars: 3
+    description: ZIP code (first 3 digits kept)
+
+  - name: created_at
+    type: datetime
+    description: Record creation timestamp
+
+  - name: updated_at
+    type: datetime
+    description: Record last update timestamp
+
+  - name: source_system
+    type: string
+    description: Originating EHR system (epic, cerner, etc.)
+
+  - name: source_patient_id
+    type: string
+    description: Original patient ID from source system

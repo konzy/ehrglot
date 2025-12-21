@@ -1,0 +1,102 @@
+# Bidirectional Mapping: FHIR R4 Patient ↔ Data Warehouse
+# Enables conversion in both directions
+
+source_schema: fhir_r4/patient
+target_schema: custom/data_warehouse
+bidirectional: true
+auto_reverse: true  # Auto-generate reverse mappings
+description: |
+  Maps FHIR R4 Patient resource to/from custom data warehouse format.
+
+field_mappings:
+  # ID mappings
+  - source: id
+    target: source_patient_id
+    description: FHIR resource ID to warehouse source ID
+
+  # Name transformation (requires custom reverse)
+  - source: name[0].family
+    target: full_name
+    transform: combine_name  # Custom transform to combine given + family
+    description: Combine FHIR name parts into full name
+
+  # Demographics
+  - source: birthDate
+    target: date_of_birth
+    transform: date_to_fhir_date
+
+  - source: gender
+    target: gender_code
+    transform: fhir_gender_to_code
+    value_mapping:
+      male: M
+      female: F
+      other: O
+      unknown: U
+
+  # Contact info
+  - source: telecom[0].value
+    target: primary_phone
+    transform: normalize_phone
+    condition: "telecom[0].system == 'phone'"
+
+  - source: telecom[1].value
+    target: email
+    condition: "telecom[1].system == 'email'"
+
+  # Address
+  - source: address[0].line[0]
+    target: address_line1
+
+  - source: address[0].city
+    target: city
+
+  - source: address[0].state
+    target: state_code
+
+  - source: address[0].postalCode
+    target: zip_code
+
+# Explicit reverse mappings for complex transformations
+reverse_field_mappings:
+  - source: full_name
+    target: name[0].text
+    description: Store as display name when reversing
+
+  - source: date_of_birth
+    target: birthDate
+
+  - source: gender_code
+    target: gender
+    reverse_transform: code_to_fhir_gender
+    value_mapping:
+      M: male
+      F: female
+      O: other
+      U: unknown
+
+  - source: primary_phone
+    target: telecom[0].value
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: home
+
+  - source: email
+    target: telecom[1].value
+    target_context:
+      telecom[1].system: email
+
+  - source: address_line1
+    target: address[0].line[0]
+
+  - source: city
+    target: address[0].city
+
+  - source: state_code
+    target: address[0].state
+
+  - source: zip_code
+    target: address[0].postalCode
+
+  - source: source_patient_id
+    target: id

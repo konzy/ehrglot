@@ -9,7 +9,10 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from ehrglot.core.types import (
+    BidirectionalMapping,
     ColumnMetadata,
+    CustomSchema,
+    CustomSchemaField,
     DataType,
     FieldMapping,
     HIPAAIdentifier,
@@ -145,6 +148,9 @@ class SchemaLoader:
         self._override_loader: SchemaOverrideLoader | None = None
         if self.override_dir.exists():
             self._override_loader = SchemaOverrideLoader(self.override_dir)
+
+        # Custom schema registry
+        self._custom_schemas: dict[str, CustomSchema] = {}
 
     def load_fhir_resource(
         self, resource_name: str, apply_overrides: bool = True
@@ -379,3 +385,177 @@ class SchemaLoader:
     def clear_cache(self) -> None:
         """Clear the schema cache."""
         self._cache.clear()
+
+    def register_custom_schema(self, schema: CustomSchema) -> None:
+        """Register a custom schema for use in mappings.
+
+        Args:
+            schema: CustomSchema to register.
+        """
+        key = f"{schema.namespace}/{schema.name}"
+        self._custom_schemas[key] = schema
+
+    def get_custom_schema(self, name: str) -> CustomSchema | None:
+        """Get a registered custom schema.
+
+        Args:
+            name: Schema name (e.g., 'custom/my_warehouse').
+
+        Returns:
+            CustomSchema if found, None otherwise.
+        """
+        return self._custom_schemas.get(name)
+
+    def load_custom_schema(self, schema_path: str) -> CustomSchema:
+        """Load a custom schema from a YAML file.
+
+        Args:
+            schema_path: Path relative to schema_dir (e.g., 'custom/my_warehouse').
+
+        Returns:
+            Loaded CustomSchema.
+
+        Raises:
+            FileNotFoundError: If schema file doesn't exist.
+        """
+        cache_key = f"custom_schema:{schema_path}"
+        if cache_key in self._cache:
+            cached: CustomSchema = self._cache[cache_key]
+            return cached
+
+        file_path = self.schema_dir / f"{schema_path}.yaml"
+        if not file_path.exists():
+            raise FileNotFoundError(f"Custom schema not found: {file_path}")
+
+        with open(file_path) as f:
+            data = yaml.safe_load(f)
+
+        fields = []
+        for field_data in data.get("fields", []):
+            schema_field = CustomSchemaField(
+                name=field_data["name"],
+                type=_parse_data_type(field_data.get("type", "string")),
+                required=field_data.get("required", False),
+                pii_level=_parse_pii_level(field_data.get("pii_level")),
+                pii_category=_parse_pii_category(field_data.get("pii_category")),
+                hipaa_identifier=_parse_hipaa_identifier(field_data.get("hipaa_identifier")),
+                masking_strategy=_parse_masking_strategy(field_data.get("masking_strategy")),
+                masking_params=field_data.get("masking_params", {}),
+                description=field_data.get("description", ""),
+            )
+            fields.append(schema_field)
+
+        # Extract namespace from path or use provided
+        namespace = data.get("namespace", schema_path.split("/")[0])
+
+        schema = CustomSchema(
+            name=data.get("name", schema_path.split("/")[-1]),
+            version=data.get("version", "1.0"),
+            fields=fields,
+            description=data.get("description", ""),
+            namespace=namespace,
+        )
+
+        self._cache[cache_key] = schema
+        self.register_custom_schema(schema)
+        return schema
+
+    def load_bidirectional_mapping(
+        self, source_schema: str, target_schema: str
+    ) -> BidirectionalMapping:
+        """Load a bidirectional mapping between two schemas.
+
+        Args:
+            source_schema: Source schema path (e.g., 'fhir_r4/patient').
+            target_schema: Target schema path (e.g., 'custom/my_warehouse').
+
+        Returns:
+            BidirectionalMapping with forward and reverse mappings.
+
+        Raises:
+            FileNotFoundError: If mapping file doesn't exist.
+        """
+        cache_key = f"bimap:{source_schema}:{target_schema}"
+        if cache_key in self._cache:
+            cached_bimap: BidirectionalMapping = self._cache[cache_key]
+            return cached_bimap
+
+        # Try to find mapping file
+        # Convention: source_to_target.yaml in the target namespace directory
+        source_name = source_schema.split("/")[-1]
+        target_namespace = target_schema.split("/")[0]
+        mapping_name = f"{source_name}_to_{target_schema.split('/')[-1]}"
+        mapping_path = self.schema_dir / target_namespace / f"{mapping_name}.yaml"
+
+        if not mapping_path.exists():
+            raise FileNotFoundError(f"Bidirectional mapping not found: {mapping_path}")
+
+        with open(mapping_path) as f:
+            data = yaml.safe_load(f)
+
+        # Parse forward mappings
+        forward_mappings = []
+        for fm_data in data.get("field_mappings", []):
+            mapping = FieldMapping(
+                source=fm_data.get("source", ""),
+                target=fm_data["target"],
+                transform=fm_data.get("transform"),
+                default_value=fm_data.get("default"),
+            )
+            forward_mappings.append(mapping)
+
+        # Parse reverse mappings or auto-generate
+        reverse_mappings = []
+        if "reverse_field_mappings" in data:
+            for rm_data in data["reverse_field_mappings"]:
+                mapping = FieldMapping(
+                    source=rm_data.get("source", ""),
+                    target=rm_data["target"],
+                    transform=rm_data.get("reverse_transform"),
+                    default_value=rm_data.get("default"),
+                )
+                reverse_mappings.append(mapping)
+        elif data.get("auto_reverse", True):
+            # Auto-generate reverse mappings by inverting source/target
+            for fm in forward_mappings:
+                if fm.source and fm.target:
+                    reverse_mappings.append(
+                        FieldMapping(
+                            source=fm.target,
+                            target=fm.source,
+                            transform=None,  # Reverse transforms need explicit definition
+                            default_value=None,
+                        )
+                    )
+
+        bimap = BidirectionalMapping(
+            source_schema=data.get("source_schema", source_schema),
+            target_schema=data.get("target_schema", target_schema),
+            field_mappings=forward_mappings,
+            reverse_field_mappings=reverse_mappings,
+            description=data.get("description", ""),
+            auto_reverse=data.get("auto_reverse", True),
+        )
+
+        self._cache[cache_key] = bimap
+        return bimap
+
+    def list_custom_schemas(self) -> list[str]:
+        """List all registered custom schemas.
+
+        Returns:
+            List of schema identifiers (namespace/name).
+        """
+        # Include registered schemas
+        schemas = list(self._custom_schemas.keys())
+
+        # Also check for custom schema files
+        custom_dir = self.schema_dir / "custom"
+        if custom_dir.exists():
+            for p in custom_dir.glob("*.yaml"):
+                if not p.stem.endswith("_mapping"):
+                    schema_id = f"custom/{p.stem}"
+                    if schema_id not in schemas:
+                        schemas.append(schema_id)
+
+        return schemas
