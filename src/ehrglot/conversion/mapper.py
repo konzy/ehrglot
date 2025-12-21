@@ -102,6 +102,125 @@ def cerner_sex_to_fhir_gender(value: Any) -> str:
     return mapping.get(value, "unknown")
 
 
+# HL7 v2.x Transform Functions
+
+
+def hl7_datetime_to_fhir_date(value: Any) -> str | None:
+    """Convert HL7 TS (YYYYMMDD...) to FHIR date (YYYY-MM-DD)."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if len(s) >= 8:
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    if len(s) >= 4:
+        return s[:4]
+    return None
+
+
+def hl7_datetime_to_fhir_datetime(value: Any) -> str | None:
+    """Convert HL7 TS to FHIR dateTime (ISO 8601)."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if len(s) >= 14:
+        # YYYYMMDDHHMMSS -> YYYY-MM-DDTHH:MM:SS
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}T{s[8:10]}:{s[10:12]}:{s[12:14]}"
+    if len(s) >= 12:
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}T{s[8:10]}:{s[10:12]}:00"
+    if len(s) >= 8:
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    return None
+
+
+def hl7_datetime_to_fhir_instant(value: Any) -> str | None:
+    """Convert HL7 TS to FHIR instant (with timezone)."""
+    result = hl7_datetime_to_fhir_datetime(value)
+    if result and "T" in result:
+        return f"{result}Z"  # Assume UTC if no timezone
+    return result
+
+
+def hl7_sex_to_fhir_gender(value: Any) -> str:
+    """Convert HL7 v2.x sex code to FHIR gender."""
+    mapping = {
+        "M": "male",
+        "F": "female",
+        "O": "other",
+        "U": "unknown",
+        "A": "other",
+        "N": "unknown",
+    }
+    return mapping.get(str(value).upper() if value else "", "unknown")
+
+
+def hl7_abnormal_flag_to_fhir(value: Any) -> str | None:
+    """Convert HL7 abnormal flag to FHIR interpretation code."""
+    if value is None:
+        return None
+    mapping = {
+        "L": "L",
+        "H": "H",
+        "LL": "LL",
+        "HH": "HH",
+        "N": "N",
+        "A": "A",
+        "AA": "AA",
+        "<": "L",
+        ">": "H",
+    }
+    return mapping.get(str(value).upper(), str(value))
+
+
+def hl7_result_status_to_fhir(value: Any) -> str:
+    """Convert HL7 result status to FHIR observation status."""
+    mapping = {
+        "C": "corrected",
+        "D": "cancelled",
+        "F": "final",
+        "I": "registered",
+        "P": "preliminary",
+        "R": "registered",
+        "S": "preliminary",
+        "U": "registered",
+        "W": "entered-in-error",
+        "X": "cancelled",
+    }
+    return mapping.get(str(value).upper() if value else "", "unknown")
+
+
+def hl7_yn_to_boolean(value: Any) -> bool | None:
+    """Convert HL7 Y/N to boolean."""
+    if value is None:
+        return None
+    s = str(value).upper()
+    if s in ("Y", "YES", "1", "TRUE"):
+        return True
+    if s in ("N", "NO", "0", "FALSE"):
+        return False
+    return None
+
+
+def hl7_coding_system_to_uri(value: Any) -> str:
+    """Convert HL7 coding system identifier to FHIR URI."""
+    if value is None:
+        return ""
+    mapping = {
+        "LN": "http://loinc.org",
+        "LOINC": "http://loinc.org",
+        "SCT": "http://snomed.info/sct",
+        "SNOMED": "http://snomed.info/sct",
+        "I9C": "http://hl7.org/fhir/sid/icd-9-cm",
+        "I10": "http://hl7.org/fhir/sid/icd-10-cm",
+        "ICD10": "http://hl7.org/fhir/sid/icd-10-cm",
+        "CPT": "http://www.ama-assn.org/go/cpt",
+        "CPT4": "http://www.ama-assn.org/go/cpt",
+        "RXNORM": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "NDC": "http://hl7.org/fhir/sid/ndc",
+        "CVX": "http://hl7.org/fhir/sid/cvx",
+    }
+    return mapping.get(str(value).upper(), f"urn:oid:{value}")
+
+
 # Registry of transform functions
 TRANSFORM_REGISTRY: dict[str, Callable[..., Any]] = {
     "to_string": to_string,
@@ -110,6 +229,15 @@ TRANSFORM_REGISTRY: dict[str, Callable[..., Any]] = {
     "normalize_phone": normalize_phone,
     "epic_sex_to_fhir_gender": epic_sex_to_fhir_gender,
     "cerner_sex_to_fhir_gender": cerner_sex_to_fhir_gender,
+    # HL7 v2.x transforms
+    "hl7_datetime_to_fhir_date": hl7_datetime_to_fhir_date,
+    "hl7_datetime_to_fhir_datetime": hl7_datetime_to_fhir_datetime,
+    "hl7_datetime_to_fhir_instant": hl7_datetime_to_fhir_instant,
+    "hl7_sex_to_fhir_gender": hl7_sex_to_fhir_gender,
+    "hl7_abnormal_flag_to_fhir": hl7_abnormal_flag_to_fhir,
+    "hl7_result_status_to_fhir": hl7_result_status_to_fhir,
+    "hl7_yn_to_boolean": hl7_yn_to_boolean,
+    "hl7_coding_system_to_uri": hl7_coding_system_to_uri,
 }
 
 

@@ -1,0 +1,142 @@
+# HL7 v2.x ORU OBR Segment to FHIR R4 DiagnosticReport Mapping
+
+source_system: hl7v2
+source_table: OBR
+target_resource: DiagnosticReport
+
+description: |
+  Maps HL7 v2.x OBR (Observation Request) segment to FHIR R4 DiagnosticReport.
+  OBR represents the order/panel level, OBX segments are linked as results.
+
+field_mappings:
+  # OBR-1: Set ID
+  - source: OBR-1
+    target: id
+    transform: to_string
+
+  # OBR-2: Placer Order Number
+  - source: OBR-2.1
+    target: identifier[0].value
+    description: Ordering system's order number
+
+  - source: null
+    target: identifier[0].type.coding[0].code
+    default: PLAC
+
+  # OBR-3: Filler Order Number
+  - source: OBR-3.1
+    target: identifier[1].value
+    description: Performing lab's order number
+
+  - source: null
+    target: identifier[1].type.coding[0].code
+    default: FILL
+
+  # OBR-4: Universal Service Identifier (what was ordered)
+  - source: OBR-4.1
+    target: code.coding[0].code
+
+  - source: OBR-4.2
+    target: code.coding[0].display
+
+  - source: OBR-4.3
+    target: code.coding[0].system
+    transform: hl7_coding_system_to_uri
+
+  - source: OBR-4.2
+    target: code.text
+
+  # OBR-7: Observation Date/Time (specimen collection)
+  - source: OBR-7
+    target: effectiveDateTime
+    transform: hl7_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # OBR-8: Observation End Date/Time
+  - source: OBR-8
+    target: effectivePeriod.end
+    transform: hl7_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # OBR-14: Specimen Received Date/Time
+  - source: OBR-14
+    target: extension[0].valueDateTime
+    target_context:
+      extension[0].url: "http://example.org/fhir/StructureDefinition/specimen-received"
+    skip_if_null: true
+
+  # OBR-16: Ordering Provider
+  - source: OBR-16.1
+    target: performer[0].identifier.value
+    description: Ordering physician ID
+
+  # OBR-22: Results Rpt/Status Change Date/Time
+  - source: OBR-22
+    target: issued
+    transform: hl7_datetime_to_fhir_instant
+
+  # OBR-24: Diagnostic Service Section ID
+  - source: OBR-24
+    target: category[0].coding[0].code
+    transform: hl7_diagnostic_service_to_fhir
+    value_mapping:
+      AU: AU        # Audiology
+      BG: LAB       # Blood Gases
+      BLB: LAB      # Blood Bank
+      CH: LAB       # Chemistry
+      CP: LAB       # Cytopathology
+      CT: RAD       # CAT Scan
+      HM: LAB       # Hematology
+      IMM: LAB      # Immunology
+      MB: LAB       # Microbiology
+      MCB: LAB      # Mycobacteriology
+      MYC: LAB      # Mycology
+      NMR: RAD      # Nuclear Magnetic Resonance
+      NMS: RAD      # Nuclear Medicine Scan
+      NRS: OTH      # Nursing Service
+      OTH: OTH      # Other
+      OUS: RAD      # OB Ultrasound
+      PHR: OTH      # Pharmacy
+      PT: OTH       # Physical Therapy
+      RAD: RAD      # Radiology
+      RC: OTH       # Respiratory Care
+      RX: OTH       # Radiograph
+      SP: LAB       # Surgical Pathology
+      SR: LAB       # Serology
+      TX: LAB       # Toxicology
+      VR: LAB       # Virology
+
+  # OBR-25: Result Status
+  - source: OBR-25
+    target: status
+    transform: hl7_order_result_status_to_fhir
+    value_mapping:
+      A: partial
+      C: corrected
+      F: final
+      I: registered
+      O: registered
+      P: preliminary
+      R: registered
+      S: registered
+      X: cancelled
+      Y: preliminary
+      Z: registered
+
+  # OBR-32: Principal Result Interpreter
+  - source: OBR-32.1
+    target: resultsInterpreter[0].identifier.value
+    skip_if_null: true
+
+  # OBR-35: Transcriptionist
+  - source: OBR-35.1
+    target: extension[1].valueReference.identifier.value
+    target_context:
+      extension[1].url: "http://example.org/fhir/StructureDefinition/transcriptionist"
+    skip_if_null: true
+
+  # OBR-44: Procedure Code
+  - source: OBR-44.1
+    target: code.coding[1].code
+    skip_if_null: true
+    description: CPT code if different from OBR-4

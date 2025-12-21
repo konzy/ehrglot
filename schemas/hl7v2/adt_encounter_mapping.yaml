@@ -1,0 +1,164 @@
+# HL7 v2.x ADT PV1/PV2 Segments to FHIR R4 Encounter Mapping
+
+source_system: hl7v2
+source_table: PV1
+target_resource: Encounter
+
+description: |
+  Maps HL7 v2.x PV1 (Patient Visit) and PV2 segments to FHIR R4 Encounter.
+  Covers ADT messages: A01-A13, A21-A52, etc.
+
+field_mappings:
+  # PV1-2: Patient Class
+  - source: PV1-2
+    target: class.code
+    transform: hl7_patient_class_to_fhir
+    value_mapping:
+      I: IMP        # Inpatient
+      O: AMB        # Outpatient
+      E: EMER       # Emergency
+      P: PRENC      # Pre-admission
+      R: SS         # Recurring patient
+      B: OBSENC     # Observation
+
+  - source: null
+    target: class.system
+    default: "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+
+  # PV1-3: Assigned Patient Location (PL - Point of Care)
+  - source: PV1-3.1  # Point of care (nursing unit)
+    target: location[0].location.display
+    description: Nursing unit/ward
+
+  - source: PV1-3.2  # Room
+    target: location[0].location.identifier.value
+    skip_if_null: true
+
+  - source: PV1-3.3  # Bed
+    target: extension[0].valueString
+    target_context:
+      extension[0].url: "http://example.org/fhir/StructureDefinition/bed"
+    skip_if_null: true
+
+  # PV1-4: Admission Type
+  - source: PV1-4
+    target: type[0].coding[0].code
+    transform: hl7_admission_type_to_fhir
+    value_mapping:
+      A: A          # Accident
+      E: E          # Emergency
+      L: L          # Labor and Delivery
+      R: R          # Routine
+      N: N          # Newborn
+      U: U          # Urgent
+
+  # PV1-7: Attending Doctor (XCN)
+  - source: PV1-7.1  # ID number
+    target: participant[0].individual.identifier.value
+    description: Attending physician ID
+
+  - source: PV1-7.2  # Family name
+    target: participant[0].individual.display
+    transform: concat_provider_name
+
+  - source: null
+    target: participant[0].type[0].coding[0].code
+    default: ATND
+
+  # PV1-8: Referring Doctor
+  - source: PV1-8.1
+    target: participant[1].individual.identifier.value
+    skip_if_null: true
+
+  - source: null
+    target: participant[1].type[0].coding[0].code
+    default: REF
+    condition: "PV1-8.1 IS NOT NULL"
+
+  # PV1-9: Consulting Doctor
+  - source: PV1-9.1
+    target: participant[2].individual.identifier.value
+    skip_if_null: true
+
+  - source: null
+    target: participant[2].type[0].coding[0].code
+    default: CON
+    condition: "PV1-9.1 IS NOT NULL"
+
+  # PV1-10: Hospital Service
+  - source: PV1-10
+    target: serviceType.coding[0].code
+    skip_if_null: true
+
+  # PV1-14: Admit Source
+  - source: PV1-14
+    target: hospitalization.admitSource.coding[0].code
+    transform: hl7_admit_source_to_fhir
+    skip_if_null: true
+
+  # PV1-17: Admitting Doctor
+  - source: PV1-17.1
+    target: participant[3].individual.identifier.value
+    skip_if_null: true
+
+  - source: null
+    target: participant[3].type[0].coding[0].code
+    default: ADM
+    condition: "PV1-17.1 IS NOT NULL"
+
+  # PV1-19: Visit Number (Encounter ID)
+  - source: PV1-19.1
+    target: identifier[0].value
+    description: Visit/encounter number
+
+  - source: PV1-19.4
+    target: identifier[0].system
+    transform: hl7_authority_to_system
+
+  # PV1-36: Discharge Disposition
+  - source: PV1-36
+    target: hospitalization.dischargeDisposition.coding[0].code
+    transform: hl7_discharge_disposition_to_fhir
+    skip_if_null: true
+
+  # PV1-44: Admit Date/Time
+  - source: PV1-44
+    target: period.start
+    transform: hl7_datetime_to_fhir_datetime
+
+  # PV1-45: Discharge Date/Time
+  - source: PV1-45
+    target: period.end
+    transform: hl7_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Derive status from dates
+  - source: null
+    target: status
+    transform: derive_encounter_status
+    description: Derived from admission/discharge dates
+
+# PV2 segment additional fields (if present)
+pv2_mappings:
+  # PV2-3: Admit Reason
+  - source: PV2-3.1
+    target: reasonCode[0].coding[0].code
+    skip_if_null: true
+
+  - source: PV2-3.2
+    target: reasonCode[0].text
+    skip_if_null: true
+
+  # PV2-8: Expected Admit Date/Time
+  - source: PV2-8
+    target: extension[1].valueDateTime
+    target_context:
+      extension[1].url: "http://example.org/fhir/StructureDefinition/expected-admit"
+    skip_if_null: true
+
+  # PV2-9: Expected Discharge Date/Time
+  - source: PV2-9
+    target: extension[2].valueDateTime
+    target_context:
+      extension[2].url: "http://example.org/fhir/StructureDefinition/expected-discharge"
+    skip_if_null: true

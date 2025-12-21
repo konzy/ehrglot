@@ -1,0 +1,160 @@
+# HL7 v2.x ORU OBX Segment to FHIR R4 Observation Mapping
+
+source_system: hl7v2
+source_table: OBX
+target_resource: Observation
+
+description: |
+  Maps HL7 v2.x OBX (Observation/Result) segment to FHIR R4 Observation.
+  Used in ORU (Observation Result Unsolicited) messages.
+  OBR provides context, OBX provides individual results.
+
+field_mappings:
+  # OBX-1: Set ID
+  - source: OBX-1
+    target: id
+    transform: to_string
+    description: Sequence number within message
+
+  # OBX-2: Value Type (determines how to interpret OBX-5)
+  # NM=Numeric, ST=String, TX=Text, CWE=Coded, etc.
+  - source: OBX-2
+    target: extension[0].valueCode
+    target_context:
+      extension[0].url: "http://example.org/fhir/StructureDefinition/hl7-value-type"
+
+  # OBX-3: Observation Identifier (CWE - coded)
+  - source: OBX-3.1  # Identifier code
+    target: code.coding[0].code
+
+  - source: OBX-3.2  # Text description
+    target: code.coding[0].display
+
+  - source: OBX-3.3  # Coding system
+    target: code.coding[0].system
+    transform: hl7_coding_system_to_uri
+    value_mapping:
+      LN: "http://loinc.org"
+      SCT: "http://snomed.info/sct"
+      I9C: "http://hl7.org/fhir/sid/icd-9-cm"
+      I10: "http://hl7.org/fhir/sid/icd-10-cm"
+
+  - source: OBX-3.2
+    target: code.text
+    description: Human-readable name
+
+  # OBX-5: Observation Value (interpretation depends on OBX-2)
+  # Numeric values
+  - source: OBX-5
+    target: valueQuantity.value
+    transform: to_decimal
+    condition: "OBX-2 == 'NM'"
+
+  # String/Text values
+  - source: OBX-5
+    target: valueString
+    condition: "OBX-2 IN ('ST', 'TX', 'FT')"
+
+  # Coded values
+  - source: OBX-5.1
+    target: valueCodeableConcept.coding[0].code
+    condition: "OBX-2 IN ('CWE', 'CE', 'CNE')"
+
+  - source: OBX-5.2
+    target: valueCodeableConcept.coding[0].display
+    condition: "OBX-2 IN ('CWE', 'CE', 'CNE')"
+
+  # OBX-6: Units (CWE)
+  - source: OBX-6.1  # Unit identifier
+    target: valueQuantity.unit
+
+  - source: OBX-6.1
+    target: valueQuantity.code
+    description: UCUM code when available
+
+  - source: OBX-6.3
+    target: valueQuantity.system
+    transform: hl7_unit_system_to_uri
+    default: "http://unitsofmeasure.org"
+
+  # OBX-7: Reference Range
+  - source: OBX-7
+    target: referenceRange[0].text
+    skip_if_null: true
+
+  # OBX-8: Abnormal Flags
+  - source: OBX-8
+    target: interpretation[0].coding[0].code
+    transform: hl7_abnormal_flag_to_fhir
+    value_mapping:
+      L: L          # Low
+      H: H          # High
+      LL: LL        # Critical low
+      HH: HH        # Critical high
+      N: N          # Normal
+      A: A          # Abnormal
+      AA: AA        # Very abnormal
+      "<": L        # Below absolute low
+      ">": H        # Above absolute high
+    skip_if_null: true
+
+  - source: null
+    target: interpretation[0].coding[0].system
+    default: "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation"
+    condition: "OBX-8 IS NOT NULL"
+
+  # OBX-11: Observation Result Status
+  - source: OBX-11
+    target: status
+    transform: hl7_result_status_to_fhir
+    value_mapping:
+      C: corrected
+      D: cancelled
+      F: final
+      I: registered
+      P: preliminary
+      R: registered
+      S: preliminary
+      U: registered
+      W: entered-in-error
+      X: cancelled
+
+  # OBX-14: Date/Time of the Observation
+  - source: OBX-14
+    target: effectiveDateTime
+    transform: hl7_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # OBX-15: Producer's ID (lab identifier)
+  - source: OBX-15.1
+    target: performer[0].identifier.value
+    skip_if_null: true
+
+  # OBX-16: Responsible Observer
+  - source: OBX-16.1
+    target: performer[1].identifier.value
+    skip_if_null: true
+
+  # OBX-17: Observation Method
+  - source: OBX-17.1
+    target: method.coding[0].code
+    skip_if_null: true
+
+  - source: OBX-17.2
+    target: method.coding[0].display
+    skip_if_null: true
+
+  # OBX-19: Date/Time of the Analysis
+  - source: OBX-19
+    target: issued
+    transform: hl7_datetime_to_fhir_instant
+    skip_if_null: true
+
+  # Category defaults to laboratory for ORU
+  - source: null
+    target: category[0].coding[0].code
+    default: laboratory
+
+  - source: null
+    target: category[0].coding[0].system
+    default: "http://terminology.hl7.org/CodeSystem/observation-category"

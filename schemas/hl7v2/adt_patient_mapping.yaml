@@ -1,0 +1,199 @@
+# HL7 v2.x ADT PID Segment to FHIR R4 Patient Mapping
+# Supports ADT messages: A01, A02, A03, A04, A05, A08, A11, A12, A13, etc.
+
+source_system: hl7v2
+source_table: PID
+target_resource: Patient
+
+description: |
+  Maps HL7 v2.x PID (Patient Identification) segment to FHIR R4 Patient.
+  This is a generic mapping that works across EHR vendors.
+  Vendor-specific Z-segments can be handled via overrides.
+
+# HL7 v2.x PID segment field mappings
+# PID-n refers to the nth field in the PID segment
+
+field_mappings:
+  # PID-3: Patient Identifier List (repeating)
+  - source: PID-3.1  # ID number
+    target: identifier[0].value
+    description: Primary patient identifier (MRN)
+
+  - source: PID-3.4  # Assigning authority
+    target: identifier[0].system
+    transform: hl7_authority_to_system
+    description: Identifier namespace
+
+  - source: PID-3.5  # Identifier type code
+    target: identifier[0].type.coding[0].code
+    transform: hl7_id_type_to_fhir
+    description: Identifier type (MR, SS, DL, etc.)
+
+  # PID-5: Patient Name (XPN - Extended Person Name)
+  - source: PID-5.1  # Family name
+    target: name[0].family
+    description: Last name
+
+  - source: PID-5.2  # Given name
+    target: name[0].given[0]
+    description: First name
+
+  - source: PID-5.3  # Second/middle name
+    target: name[0].given[1]
+    skip_if_null: true
+    description: Middle name
+
+  - source: PID-5.4  # Suffix
+    target: name[0].suffix[0]
+    skip_if_null: true
+
+  - source: PID-5.5  # Prefix
+    target: name[0].prefix[0]
+    skip_if_null: true
+
+  - source: PID-5.7  # Name type code
+    target: name[0].use
+    transform: hl7_name_type_to_fhir
+    value_mapping:
+      L: official
+      A: usual
+      M: maiden
+      N: nickname
+      B: old
+
+  # PID-7: Date/Time of Birth
+  - source: PID-7
+    target: birthDate
+    transform: hl7_datetime_to_fhir_date
+    description: Date of birth (HL7 TS format)
+
+  # PID-8: Administrative Sex
+  - source: PID-8
+    target: gender
+    transform: hl7_sex_to_fhir_gender
+    value_mapping:
+      M: male
+      F: female
+      O: other
+      U: unknown
+      A: other
+      N: unknown
+
+  # PID-10: Race (repeating)
+  - source: PID-10.1
+    target: extension[0].valueCodeableConcept.coding[0].code
+    target_context:
+      extension[0].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+    skip_if_null: true
+
+  # PID-11: Patient Address (repeating XAD)
+  - source: PID-11.1  # Street address
+    target: address[0].line[0]
+
+  - source: PID-11.2  # Other designation
+    target: address[0].line[1]
+    skip_if_null: true
+
+  - source: PID-11.3  # City
+    target: address[0].city
+
+  - source: PID-11.4  # State or province
+    target: address[0].state
+
+  - source: PID-11.5  # ZIP or postal code
+    target: address[0].postalCode
+
+  - source: PID-11.6  # Country
+    target: address[0].country
+    skip_if_null: true
+
+  - source: PID-11.7  # Address type
+    target: address[0].use
+    transform: hl7_address_type_to_fhir
+    value_mapping:
+      H: home
+      O: work
+      C: temp
+      M: old
+      B: work
+
+  # PID-13: Phone Number - Home (repeating XTN)
+  - source: PID-13.1  # Telephone number
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - source: null
+    target: telecom[0].system
+    default: phone
+
+  - source: null
+    target: telecom[0].use
+    default: home
+
+  # PID-14: Phone Number - Business
+  - source: PID-14.1
+    target: telecom[1].value
+    transform: normalize_phone
+    skip_if_null: true
+
+  - source: null
+    target: telecom[1].system
+    default: phone
+    condition: "PID-14.1 IS NOT NULL"
+
+  - source: null
+    target: telecom[1].use
+    default: work
+    condition: "PID-14.1 IS NOT NULL"
+
+  # PID-15: Primary Language
+  - source: PID-15.1
+    target: communication[0].language.coding[0].code
+    skip_if_null: true
+
+  # PID-16: Marital Status
+  - source: PID-16.1
+    target: maritalStatus.coding[0].code
+    transform: hl7_marital_to_fhir
+    target_context:
+      maritalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
+    skip_if_null: true
+
+  # PID-19: SSN Number
+  - source: PID-19
+    target: identifier[1].value
+    target_context:
+      identifier[1].system: "http://hl7.org/fhir/sid/us-ssn"
+      identifier[1].type.coding[0].code: SS
+    skip_if_null: true
+
+  # PID-22: Ethnic Group
+  - source: PID-22.1
+    target: extension[1].valueCodeableConcept.coding[0].code
+    target_context:
+      extension[1].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+    skip_if_null: true
+
+  # PID-29: Patient Death Date and Time
+  - source: PID-29
+    target: deceasedDateTime
+    transform: hl7_datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # PID-30: Patient Death Indicator
+  - source: PID-30
+    target: deceasedBoolean
+    transform: hl7_yn_to_boolean
+    condition: "PID-29 IS NULL"
+    skip_if_null: true
+
+# Transform functions needed:
+# - hl7_datetime_to_fhir_date: Convert HL7 TS (YYYYMMDD...) to FHIR date
+# - hl7_datetime_to_fhir_datetime: Convert HL7 TS to FHIR dateTime
+# - hl7_sex_to_fhir_gender: Map HL7 sex codes to FHIR gender
+# - hl7_name_type_to_fhir: Map HL7 name type to FHIR name.use
+# - hl7_address_type_to_fhir: Map HL7 address type to FHIR address.use
+# - hl7_authority_to_system: Convert assigning authority to URI
+# - hl7_id_type_to_fhir: Map identifier type codes
+# - hl7_marital_to_fhir: Map marital status codes
+# - hl7_yn_to_boolean: Convert Y/N to boolean
