@@ -1,0 +1,89 @@
+# Cerner Millennium to FHIR R4 MedicationRequest Mapping
+# Maps Cerner's ORDERS table to FHIR MedicationRequest resource
+
+source_system: cerner_millennium
+source_table: ORDERS
+target_resource: MedicationRequest
+description: |
+  Maps Cerner Millennium ORDERS table (medication orders) to FHIR R4 MedicationRequest.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: ORDERS
+
+field_mappings:
+  - source: ORDER_ID
+    target: id
+    transform: to_string
+
+  - source: ORDER_STATUS_CD
+    target: status
+    transform: cerner_order_status_to_fhir
+    lookup_table: CODE_VALUE
+    value_mapping:
+      2543: active
+      2545: completed
+      2546: cancelled
+      2547: on-hold
+
+  - source: null
+    target: intent
+    default: order
+
+  - source: CATALOG_CD
+    target: medicationCodeableConcept.coding[0].code
+    transform: lookup_rxnorm_from_catalog
+    target_context:
+      medicationCodeableConcept.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  - source: ORDER_MNEMONIC
+    target: medicationCodeableConcept.text
+    transform: null
+
+  - source: PERSON_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: ENCNTR_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: ORIG_ORDER_DT_TM
+    target: authoredOn
+    transform: datetime_to_fhir_datetime
+
+  - source: ORDER_PROVIDER_ID
+    target: requester.reference
+    transform: to_practitioner_reference
+
+  - source: ORDER_COMMENT
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+  - source: null
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.value
+    source_query: |
+      SELECT OD.DOSE_STRENGTH FROM ORDER_DETAIL OD
+      WHERE OD.ORDER_ID = ORDERS.ORDER_ID AND OD.OE_FIELD_ID = 12 -- Dose field
+    skip_if_null: true
+
+  - source: null
+    target: dosageInstruction[0].timing.code.text
+    source_query: |
+      SELECT OD.OE_FIELD_DISPLAY_VALUE FROM ORDER_DETAIL OD
+      WHERE OD.ORDER_ID = ORDERS.ORDER_ID AND OD.OE_FIELD_ID = 10 -- Frequency field
+    skip_if_null: true
+
+required_joins:
+  - table: CODE_VALUE
+    alias: CV_STATUS
+    join_on: ORDERS.ORDER_STATUS_CD = CV_STATUS.CODE_VALUE
+    fields: [DISPLAY]
+
+  - table: ORDER_CATALOG
+    join_on: ORDERS.CATALOG_CD = ORDER_CATALOG.CATALOG_CD
+    fields: [PRIMARY_MNEMONIC, CKI]

@@ -1,0 +1,94 @@
+# Cerner Millennium to FHIR R4 Observation Mapping
+# Maps Cerner's CLINICAL_EVENT table to FHIR Observation resource
+
+source_system: cerner_millennium
+source_table: CLINICAL_EVENT
+target_resource: Observation
+description: |
+  Maps Cerner Millennium CLINICAL_EVENT table to FHIR R4 Observation.
+  Covers labs, vitals, and other clinical measurements.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: CLINICAL_EVENT
+
+field_mappings:
+  - source: CLINICAL_EVENT_ID
+    target: id
+    transform: to_string
+
+  - source: RESULT_STATUS_CD
+    target: status
+    transform: cerner_result_status_to_fhir
+    lookup_table: CODE_VALUE
+    value_mapping:
+      25: final
+      34: preliminary
+      35: registered
+
+  - source: EVENT_CLASS_CD
+    target: category[0].coding[0].code
+    transform: cerner_event_class_to_fhir
+    value_mapping:
+      224: laboratory
+      228: vital-signs
+
+  - source: EVENT_CD
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "urn:oid:cerner:event"
+
+  - source: EVENT_TITLE_TEXT
+    target: code.text
+    transform: null
+
+  - source: PERSON_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: ENCNTR_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: EVENT_END_DT_TM
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: RESULT_VAL
+    target: valueQuantity.value
+    transform: to_decimal
+    condition: "RESULT_VAL IS NOT NULL AND ISNUMERIC(RESULT_VAL) = 1"
+
+  - source: RESULT_UNITS_CD
+    target: valueQuantity.unit
+    transform: cerner_units_to_ucum
+    skip_if_null: true
+
+  - source: RESULT_VAL
+    target: valueString
+    transform: null
+    condition: "ISNUMERIC(RESULT_VAL) = 0"
+
+  - source: NORMALCY_CD
+    target: interpretation[0].coding[0].code
+    transform: cerner_normalcy_to_fhir
+    value_mapping:
+      211: N
+      212: A
+      213: H
+      214: L
+    skip_if_null: true
+
+  - source: PERFORMED_PRSNL_ID
+    target: performer[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+required_joins:
+  - table: CODE_VALUE
+    alias: CV_EVENT
+    join_on: CLINICAL_EVENT.EVENT_CD = CV_EVENT.CODE_VALUE
+    fields: [DISPLAY, CDF_MEANING]

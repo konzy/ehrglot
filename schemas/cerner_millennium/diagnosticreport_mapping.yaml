@@ -1,0 +1,78 @@
+# Cerner Millennium to FHIR R4 DiagnosticReport Mapping
+# Maps Cerner's ORDER_CONTAINER table to FHIR DiagnosticReport resource
+
+source_system: cerner_millennium
+source_table: ORDER_CONTAINER
+target_resource: DiagnosticReport
+description: |
+  Maps Cerner Millennium ORDER_CONTAINER to FHIR R4 DiagnosticReport.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: ORDER_CONTAINER
+
+field_mappings:
+  - source: ORDER_CONTAINER_ID
+    target: id
+    transform: to_string
+
+  - source: ACCESSION_NBR
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "urn:oid:cerner:accession"
+      identifier[0].type.coding[0].code: "ACSN"
+    skip_if_null: true
+
+  - source: CONTAINER_STATUS_CD
+    target: status
+    transform: cerner_container_status_to_report_status
+
+  - source: CATALOG_TYPE_CD
+    target: category[0].coding[0].code
+    transform: cerner_catalog_type_to_category
+    value_mapping:
+      1: LAB
+      2: RAD
+
+  - source: ORDER_ID
+    target: code.coding[0].code
+    transform: lookup_loinc_from_order
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: PERSON_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: ENCNTR_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: COLLECT_DT_TM
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: COMPLETE_DT_TM
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: VERIFY_PRSNL_ID
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: ORDER_CONTAINER_ID
+    target: result
+    transform: lookup_observations_for_container
+    description: Links to CLINICAL_EVENT observations
+
+required_joins:
+  - table: ORDERS
+    join_on: ORDER_CONTAINER.ORDER_ID = ORDERS.ORDER_ID
+    fields: [ORDER_MNEMONIC, CATALOG_CD]

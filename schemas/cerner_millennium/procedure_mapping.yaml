@@ -1,0 +1,69 @@
+# Cerner Millennium to FHIR R4 Procedure Mapping
+# Maps Cerner's PROCEDURE table to FHIR Procedure resource
+
+source_system: cerner_millennium
+source_table: PROCEDURE
+target_resource: Procedure
+description: |
+  Maps Cerner Millennium PROCEDURE table to FHIR R4 Procedure.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: PROCEDURE
+
+field_mappings:
+  - source: PROCEDURE_ID
+    target: id
+    transform: to_string
+
+  - source: PROC_DT_TM
+    target: status
+    transform: determine_procedure_status
+    # Completed if in past, in-progress if current
+
+  - source: NOMENCLATURE_ID
+    target: code.coding[0].code
+    transform: lookup_cpt_from_nomenclature
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+
+  - source: null
+    target: code.text
+    transform: null
+    source_query: |
+      SELECT N.SOURCE_STRING FROM NOMENCLATURE N
+      WHERE N.NOMENCLATURE_ID = PROCEDURE.NOMENCLATURE_ID
+
+  - source: PERSON_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: ENCNTR_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: PROC_DT_TM
+    target: performedDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: PROC_LOC_CD
+    target: location.reference
+    transform: to_location_reference
+    skip_if_null: true
+
+  - source: PROC_PRSNL_ID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: PROC_COMMENT
+    target: note[0].text
+    transform: null
+    skip_if_null: true
+
+required_joins:
+  - table: NOMENCLATURE
+    join_on: PROCEDURE.NOMENCLATURE_ID = NOMENCLATURE.NOMENCLATURE_ID
+    fields: [SOURCE_STRING, SOURCE_IDENTIFIER]

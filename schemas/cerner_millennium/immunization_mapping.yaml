@@ -1,0 +1,84 @@
+# Cerner Millennium to FHIR R4 Immunization Mapping
+# Maps Cerner's CE_MED_ADMIN_EVENT table to FHIR Immunization resource
+
+source_system: cerner_millennium
+source_table: CE_MED_ADMIN_EVENT
+target_resource: Immunization
+description: |
+  Maps Cerner Millennium immunization events to FHIR R4 Immunization.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: CE_MED_ADMIN_EVENT
+
+field_mappings:
+  - source: EVENT_ID
+    target: id
+    transform: to_string
+
+  - source: ADMIN_RESULT_CD
+    target: status
+    transform: cerner_admin_result_to_status
+    value_mapping:
+      1: completed
+      2: not-done
+      3: entered-in-error
+
+  - source: ITEM_NOMENCLATURE_ID
+    target: vaccineCode.coding[0].code
+    transform: lookup_cvx_from_nomenclature
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+
+  - source: ITEM_DESCRIPTION
+    target: vaccineCode.text
+    transform: null
+
+  - source: PERSON_ID
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: ENCNTR_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: ADMIN_START_DT_TM
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: ADMIN_PRSNL_ID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: LOT_NUMBER
+    target: lotNumber
+    transform: null
+    skip_if_null: true
+
+  - source: EXPIRATION_DT_TM
+    target: expirationDate
+    transform: datetime_to_fhir_date
+    skip_if_null: true
+
+  - source: ADMIN_DOSAGE
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: ADMIN_ROUTE_CD
+    target: route.coding[0].code
+    transform: cerner_route_to_snomed
+    skip_if_null: true
+
+  - source: ADMIN_SITE_CD
+    target: site.coding[0].code
+    transform: cerner_site_to_snomed
+    skip_if_null: true
+
+required_joins:
+  - table: NOMENCLATURE
+    join_on: CE_MED_ADMIN_EVENT.ITEM_NOMENCLATURE_ID = NOMENCLATURE.NOMENCLATURE_ID
+    fields: [SOURCE_STRING, SOURCE_IDENTIFIER]

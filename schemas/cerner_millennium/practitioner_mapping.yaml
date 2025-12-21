@@ -1,0 +1,87 @@
+# Cerner Millennium to FHIR R4 Practitioner Mapping
+# Maps Cerner's PRSNL table to FHIR Practitioner resource
+
+source_system: cerner_millennium
+source_table: PRSNL
+target_resource: Practitioner
+description: |
+  Maps Cerner Millennium PRSNL (personnel) table to FHIR R4 Practitioner.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: PRSNL
+
+field_mappings:
+  - source: PERSON_ID
+    target: id
+    transform: to_string
+
+  - source: null
+    target: identifier[0].value
+    source_query: |
+      SELECT PA.ALIAS FROM PRSNL_ALIAS PA
+      WHERE PA.PERSON_ID = PRSNL.PERSON_ID AND PA.PRSNL_ALIAS_TYPE_CD = 1 -- NPI
+    target_context:
+      identifier[0].system: "http://hl7.org/fhir/sid/us-npi"
+    skip_if_null: true
+
+  - source: ACTIVE_STATUS_CD
+    target: active
+    transform: cerner_active_status_to_boolean
+
+  - source: NAME_FIRST
+    target: name[0].given[0]
+    transform: null
+
+  - source: NAME_LAST
+    target: name[0].family
+    transform: null
+
+  - source: NAME_PREFIX
+    target: name[0].prefix[0]
+    transform: null
+    skip_if_null: true
+
+  - source: NAME_SUFFIX
+    target: name[0].suffix[0]
+    transform: null
+    skip_if_null: true
+
+  - source: null
+    target: telecom[0].value
+    source_query: |
+      SELECT P.PHONE_NUM FROM PHONE P
+      WHERE P.PARENT_ENTITY_ID = PRSNL.PERSON_ID AND P.PHONE_TYPE_CD = 163
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: work
+    skip_if_null: true
+
+  - source: EMAIL
+    target: telecom[1].value
+    transform: null
+    target_context:
+      telecom[1].system: email
+    skip_if_null: true
+
+  - source: SEX_CD
+    target: gender
+    transform: cerner_sex_to_fhir_gender
+    skip_if_null: true
+
+  - source: BIRTH_DT_TM
+    target: birthDate
+    transform: datetime_to_fhir_date
+    skip_if_null: true
+
+  - source: PHYSICIAN_IND
+    target: qualification[0].code.text
+    transform: null
+    condition: "PHYSICIAN_IND = 1"
+    default: Physician
+
+required_joins:
+  - table: PRSNL_ALIAS
+    join_on: PRSNL.PERSON_ID = PRSNL_ALIAS.PERSON_ID
+    fields: [ALIAS, PRSNL_ALIAS_TYPE_CD]

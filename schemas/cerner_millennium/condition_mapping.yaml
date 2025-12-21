@@ -1,0 +1,70 @@
+# Cerner Millennium to FHIR R4 Condition Mapping
+# Maps Cerner's DIAGNOSIS table to FHIR Condition resource
+
+source_system: cerner_millennium
+source_table: DIAGNOSIS
+target_resource: Condition
+description: |
+  Maps Cerner Millennium DIAGNOSIS table to FHIR R4 Condition.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: DIAGNOSIS
+
+field_mappings:
+  - source: DIAGNOSIS_ID
+    target: id
+    transform: to_string
+
+  - source: DIAG_TYPE_CD
+    target: clinicalStatus.coding[0].code
+    transform: cerner_diag_type_to_clinical_status
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-clinical"
+
+  - source: CONFIRMATION_STATUS_CD
+    target: verificationStatus.coding[0].code
+    transform: cerner_confirmation_to_verification
+    target_context:
+      verificationStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-ver-status"
+
+  - source: NOMENCLATURE_ID
+    target: code.coding[0].code
+    transform: lookup_icd10_from_nomenclature
+    target_context:
+      code.coding[0].system: "http://hl7.org/fhir/sid/icd-10-cm"
+
+  - source: null
+    target: code.text
+    transform: null
+    source_query: |
+      SELECT N.SOURCE_STRING FROM NOMENCLATURE N
+      WHERE N.NOMENCLATURE_ID = DIAGNOSIS.NOMENCLATURE_ID
+
+  - source: PERSON_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: ENCNTR_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: DIAG_DT_TM
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: BEG_EFFECTIVE_DT_TM
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: DIAG_PRSNL_ID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+required_joins:
+  - table: NOMENCLATURE
+    join_on: DIAGNOSIS.NOMENCLATURE_ID = NOMENCLATURE.NOMENCLATURE_ID
+    fields: [SOURCE_STRING, SOURCE_IDENTIFIER, SOURCE_VOCABULARY_CD]

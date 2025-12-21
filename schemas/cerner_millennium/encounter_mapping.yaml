@@ -1,0 +1,81 @@
+# Cerner Millennium to FHIR R4 Encounter Mapping
+# Maps Cerner's ENCOUNTER table to FHIR Encounter resource
+
+source_system: cerner_millennium
+source_table: ENCOUNTER
+target_resource: Encounter
+description: |
+  Maps Cerner Millennium ENCOUNTER table to FHIR R4 Encounter.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: ENCOUNTER
+
+field_mappings:
+  - source: ENCNTR_ID
+    target: id
+    transform: to_string
+
+  - source: ENCNTR_ID
+    target: identifier[0].value
+    transform: to_string
+    target_context:
+      identifier[0].system: "urn:oid:cerner:encounter"
+
+  - source: ENCNTR_STATUS_CD
+    target: status
+    transform: cerner_enc_status_to_fhir
+    lookup_table: CODE_VALUE
+    value_mapping:
+      854: in-progress
+      856: finished
+      857: cancelled
+
+  - source: ENCNTR_TYPE_CLASS_CD
+    target: class.code
+    transform: cerner_enc_class_to_fhir
+    lookup_table: CODE_VALUE
+    value_mapping:
+      309308: IMP
+      309309: AMB
+      309310: EMER
+
+  - source: PERSON_ID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: REG_DT_TM
+    target: period.start
+    transform: datetime_to_fhir_datetime
+
+  - source: DISCH_DT_TM
+    target: period.end
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: REASON_FOR_VISIT
+    target: reasonCode[0].text
+    transform: null
+    skip_if_null: true
+
+  - source: ATTEND_PRSNL_ID
+    target: participant[0].individual.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: LOC_FACILITY_CD
+    target: location[0].location.reference
+    transform: to_location_reference
+    skip_if_null: true
+
+  - source: DISCH_DISPOSITION_CD
+    target: hospitalization.dischargeDisposition.coding[0].code
+    transform: cerner_disch_to_fhir
+    skip_if_null: true
+
+required_joins:
+  - table: CODE_VALUE
+    alias: CV_STATUS
+    join_on: ENCOUNTER.ENCNTR_STATUS_CD = CV_STATUS.CODE_VALUE
+    fields: [DISPLAY]
