@@ -1,0 +1,57 @@
+# CPSI to FHIR R4 DiagnosticReport Mapping
+
+source_system: cpsi
+source_table: LabOrders
+target_resource: DiagnosticReport
+
+field_mappings:
+  - source: OrderID
+    target: id
+    transform: to_string
+
+  - source: AccessionNumber
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:cpsi:accession"
+    skip_if_null: true
+
+  - source: OrderStatus
+    target: status
+    transform: cpsi_order_status_to_report_status
+
+  - source: OrderType
+    target: category[0].coding[0].code
+    transform: cpsi_order_type_to_category
+
+  - source: LOINC_Code
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: OrderName
+    target: code.text
+
+  - source: PatientID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: VisitID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: CollectionDateTime
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: ResultDateTime
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: InterpretingPhysicianID
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true

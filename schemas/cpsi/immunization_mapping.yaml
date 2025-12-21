@@ -1,0 +1,63 @@
+# CPSI to FHIR R4 Immunization Mapping
+
+source_system: cpsi
+source_table: Immunizations
+target_resource: Immunization
+
+field_mappings:
+  - source: ImmunizationID
+    target: id
+    transform: to_string
+
+  - source: ImmStatus
+    target: status
+    transform: cpsi_imm_status_to_fhir
+
+  - source: CVX_Code
+    target: vaccineCode.coding[0].code
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+    skip_if_null: true
+
+  - source: VaccineName
+    target: vaccineCode.text
+
+  - source: PatientID
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: VisitID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: AdminDateTime
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: AdminByID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: LotNumber
+    target: lotNumber
+    skip_if_null: true
+
+  - source: ExpirationDate
+    target: expirationDate
+    transform: date_to_fhir_date
+    skip_if_null: true
+
+  - source: DoseAmount
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: Route
+    target: route.text
+    skip_if_null: true
+
+  - source: Site
+    target: site.text
+    skip_if_null: true

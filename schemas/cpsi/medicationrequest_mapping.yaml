@@ -1,0 +1,71 @@
+# CPSI to FHIR R4 MedicationRequest Mapping
+
+source_system: cpsi
+source_table: PharmacyOrders
+target_resource: MedicationRequest
+
+field_mappings:
+  - source: OrderID
+    target: id
+    transform: to_string
+
+  - source: OrderStatus
+    target: status
+    transform: cpsi_order_status_to_fhir
+
+  - source: null
+    target: intent
+    default: order
+
+  - source: NDC_Code
+    target: medicationCodeableConcept.coding[0].code
+    target_context:
+      medicationCodeableConcept.coding[0].system: "http://hl7.org/fhir/sid/ndc"
+    skip_if_null: true
+
+  - source: DrugName
+    target: medicationCodeableConcept.text
+
+  - source: PatientID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: VisitID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: OrderDateTime
+    target: authoredOn
+    transform: datetime_to_fhir_datetime
+
+  - source: OrderingPhysicianID
+    target: requester.reference
+    transform: to_practitioner_reference
+
+  - source: SIG
+    target: dosageInstruction[0].text
+    skip_if_null: true
+
+  - source: Dose
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: DoseUnits
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.unit
+    skip_if_null: true
+
+  - source: Frequency
+    target: dosageInstruction[0].timing.code.text
+    skip_if_null: true
+
+  - source: Quantity
+    target: dispenseRequest.quantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: Refills
+    target: dispenseRequest.numberOfRepeatsAllowed
+    transform: to_integer
+    skip_if_null: true

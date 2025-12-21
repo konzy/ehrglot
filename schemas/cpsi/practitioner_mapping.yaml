@@ -1,0 +1,63 @@
+# CPSI to FHIR R4 Practitioner Mapping
+
+source_system: cpsi
+source_table: Physicians
+target_resource: Practitioner
+
+field_mappings:
+  - source: PhysicianID
+    target: id
+    transform: to_string
+
+  - source: NPI
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "http://hl7.org/fhir/sid/us-npi"
+    skip_if_null: true
+
+  - source: DEA_Number
+    target: identifier[1].value
+    target_context:
+      identifier[1].system: "urn:oid:2.16.840.1.113883.4.814"
+    skip_if_null: true
+
+  - source: ActiveFlag
+    target: active
+    transform: cpsi_active_to_boolean
+
+  - source: FirstName
+    target: name[0].given[0]
+
+  - source: LastName
+    target: name[0].family
+
+  - source: Title
+    target: name[0].prefix[0]
+    skip_if_null: true
+
+  - source: Credentials
+    target: name[0].suffix[0]
+    skip_if_null: true
+
+  - source: WorkPhone
+    target: telecom[0].value
+    transform: normalize_phone
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: work
+    skip_if_null: true
+
+  - source: Email
+    target: telecom[1].value
+    target_context:
+      telecom[1].system: email
+    skip_if_null: true
+
+  - source: Gender
+    target: gender
+    transform: cpsi_gender_to_fhir
+    skip_if_null: true
+
+  - source: Specialty
+    target: qualification[0].code.text
+    skip_if_null: true

@@ -1,0 +1,53 @@
+# CPSI to FHIR R4 AllergyIntolerance Mapping
+
+source_system: cpsi
+source_table: Allergies
+target_resource: AllergyIntolerance
+
+field_mappings:
+  - source: AllergyID
+    target: id
+    transform: to_string
+
+  - source: AllergyStatus
+    target: clinicalStatus.coding[0].code
+    transform: cpsi_allergy_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  - source: AllergyType
+    target: type
+    transform: cpsi_allergy_type_to_fhir
+
+  - source: AllergenCategory
+    target: category[0]
+    transform: cpsi_allergen_category_to_fhir
+
+  - source: Severity
+    target: criticality
+    transform: cpsi_severity_to_criticality
+
+  - source: AllergenName
+    target: code.text
+
+  - source: PatientID
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: OnsetDate
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: EntryDateTime
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: EnteredByID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: Reaction
+    target: reaction[0].manifestation[0].text
+    skip_if_null: true
