@@ -1,0 +1,69 @@
+# Allscripts to FHIR R4 DiagnosticReport Mapping
+
+source_system: allscripts
+source_table: DIAGNOSTIC_REPORT
+target_resource: DiagnosticReport
+
+source_schema:
+  database: ALLSCRIPTS
+  table: DIAGNOSTIC_REPORT
+
+field_mappings:
+  - source: ReportID
+    target: id
+    transform: to_string
+
+  - source: AccessionNumber
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "urn:oid:allscripts:accession"
+    skip_if_null: true
+
+  - source: ReportStatus
+    target: status
+    transform: allscripts_report_status_to_fhir
+
+  - source: ReportCategory
+    target: category[0].coding[0].code
+    transform: allscripts_category_to_fhir
+
+  - source: LOINC
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: ReportName
+    target: code.text
+    transform: null
+
+  - source: PatientID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: EncounterID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: CollectionDateTime
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: ResultDateTime
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: InterpretingProviderID
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: Conclusion
+    target: conclusion
+    transform: null
+    skip_if_null: true

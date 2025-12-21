@@ -1,0 +1,57 @@
+# Allscripts to FHIR R4 Procedure Mapping
+
+source_system: allscripts
+source_table: PROCEDURE
+target_resource: Procedure
+
+source_schema:
+  database: ALLSCRIPTS
+  table: PROCEDURE
+
+field_mappings:
+  - source: ProcedureID
+    target: id
+    transform: to_string
+
+  - source: ProcedureStatus
+    target: status
+    transform: allscripts_proc_status_to_fhir
+
+  - source: CPTCode
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+    skip_if_null: true
+
+  - source: ProcedureDescription
+    target: code.text
+    transform: null
+
+  - source: PatientID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: EncounterID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: ProcedureDateTime
+    target: performedDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: PerformingProviderID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: FacilityID
+    target: location.reference
+    transform: to_location_reference
+    skip_if_null: true
+
+  - source: Notes
+    target: note[0].text
+    transform: null
+    skip_if_null: true

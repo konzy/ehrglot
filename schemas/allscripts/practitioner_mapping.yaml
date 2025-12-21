@@ -1,0 +1,75 @@
+# Allscripts to FHIR R4 Practitioner Mapping
+
+source_system: allscripts
+source_table: PROVIDER
+target_resource: Practitioner
+
+source_schema:
+  database: ALLSCRIPTS
+  table: PROVIDER
+
+field_mappings:
+  - source: ProviderID
+    target: id
+    transform: to_string
+
+  - source: NPI
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "http://hl7.org/fhir/sid/us-npi"
+    skip_if_null: true
+
+  - source: DEA
+    target: identifier[1].value
+    transform: null
+    target_context:
+      identifier[1].system: "urn:oid:2.16.840.1.113883.4.814"
+    skip_if_null: true
+
+  - source: IsActive
+    target: active
+    transform: to_boolean
+
+  - source: FirstName
+    target: name[0].given[0]
+    transform: null
+
+  - source: LastName
+    target: name[0].family
+    transform: null
+
+  - source: Title
+    target: name[0].prefix[0]
+    transform: null
+    skip_if_null: true
+
+  - source: Credentials
+    target: name[0].suffix[0]
+    transform: null
+    skip_if_null: true
+
+  - source: WorkPhone
+    target: telecom[0].value
+    transform: normalize_phone
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: work
+    skip_if_null: true
+
+  - source: Email
+    target: telecom[1].value
+    transform: null
+    target_context:
+      telecom[1].system: email
+    skip_if_null: true
+
+  - source: Gender
+    target: gender
+    transform: allscripts_gender_to_fhir
+    skip_if_null: true
+
+  - source: Specialty
+    target: qualification[0].code.text
+    transform: null
+    skip_if_null: true

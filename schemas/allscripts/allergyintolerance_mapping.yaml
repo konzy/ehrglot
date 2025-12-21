@@ -1,0 +1,71 @@
+# Allscripts to FHIR R4 AllergyIntolerance Mapping
+
+source_system: allscripts
+source_table: ALLERGY
+target_resource: AllergyIntolerance
+
+source_schema:
+  database: ALLSCRIPTS
+  table: ALLERGY
+
+field_mappings:
+  - source: AllergyID
+    target: id
+    transform: to_string
+
+  - source: AllergyStatus
+    target: clinicalStatus.coding[0].code
+    transform: allscripts_allergy_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  - source: AllergyType
+    target: type
+    transform: allscripts_allergy_type_to_fhir
+
+  - source: AllergenCategory
+    target: category[0]
+    transform: allscripts_allergen_category_to_fhir
+
+  - source: Severity
+    target: criticality
+    transform: allscripts_severity_to_criticality
+
+  - source: RxNormCode
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  - source: AllergenName
+    target: code.text
+    transform: null
+
+  - source: PatientID
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: OnsetDate
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: EntryDate
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: EnteredByUserID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: Reaction
+    target: reaction[0].manifestation[0].text
+    transform: null
+    skip_if_null: true
+
+  - source: ReactionSeverity
+    target: reaction[0].severity
+    transform: allscripts_reaction_severity_to_fhir
+    skip_if_null: true

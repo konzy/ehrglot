@@ -1,0 +1,76 @@
+# Allscripts to FHIR R4 Immunization Mapping
+
+source_system: allscripts
+source_table: IMMUNIZATION
+target_resource: Immunization
+
+source_schema:
+  database: ALLSCRIPTS
+  table: IMMUNIZATION
+
+field_mappings:
+  - source: ImmunizationID
+    target: id
+    transform: to_string
+
+  - source: ImmunizationStatus
+    target: status
+    transform: allscripts_imm_status_to_fhir
+
+  - source: CVXCode
+    target: vaccineCode.coding[0].code
+    transform: null
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+    skip_if_null: true
+
+  - source: VaccineName
+    target: vaccineCode.text
+    transform: null
+
+  - source: PatientID
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: EncounterID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: AdministrationDate
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: AdministeredByProviderID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: LotNumber
+    target: lotNumber
+    transform: null
+    skip_if_null: true
+
+  - source: ExpirationDate
+    target: expirationDate
+    transform: date_to_fhir_date
+    skip_if_null: true
+
+  - source: DoseAmount
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: Route
+    target: route.text
+    transform: null
+    skip_if_null: true
+
+  - source: Site
+    target: site.text
+    transform: null
+    skip_if_null: true
+
+  - source: IsHistorical
+    target: primarySource
+    transform: invert_boolean

@@ -1,0 +1,59 @@
+# Allscripts to FHIR R4 Condition Mapping
+
+source_system: allscripts
+source_table: PROBLEM
+target_resource: Condition
+
+source_schema:
+  database: ALLSCRIPTS
+  table: PROBLEM
+
+field_mappings:
+  - source: ProblemID
+    target: id
+    transform: to_string
+
+  - source: ProblemStatus
+    target: clinicalStatus.coding[0].code
+    transform: allscripts_problem_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-clinical"
+
+  - source: ICD10Code
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://hl7.org/fhir/sid/icd-10-cm"
+    skip_if_null: true
+
+  - source: ProblemDescription
+    target: code.text
+    transform: null
+
+  - source: PatientID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: EncounterID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: OnsetDate
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: ResolvedDate
+    target: abatementDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: EntryDate
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: EnteredByProviderID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true

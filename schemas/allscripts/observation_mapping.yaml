@@ -1,0 +1,71 @@
+# Allscripts to FHIR R4 Observation Mapping
+
+source_system: allscripts
+source_table: RESULT
+target_resource: Observation
+
+source_schema:
+  database: ALLSCRIPTS
+  table: RESULT
+
+field_mappings:
+  - source: ResultID
+    target: id
+    transform: to_string
+
+  - source: ResultStatus
+    target: status
+    transform: allscripts_result_status_to_fhir
+
+  - source: ResultType
+    target: category[0].coding[0].code
+    transform: allscripts_result_type_to_category
+
+  - source: LOINC
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: ResultName
+    target: code.text
+    transform: null
+
+  - source: PatientID
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: EncounterID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: ResultDateTime
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: NumericValue
+    target: valueQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: Units
+    target: valueQuantity.unit
+    transform: null
+    skip_if_null: true
+
+  - source: TextValue
+    target: valueString
+    transform: null
+    condition: "NumericValue IS NULL"
+
+  - source: AbnormalFlag
+    target: interpretation[0].coding[0].code
+    transform: allscripts_abnormal_to_interpretation
+    skip_if_null: true
+
+  - source: PerformingProviderID
+    target: performer[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
