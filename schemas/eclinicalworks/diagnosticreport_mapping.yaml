@@ -1,0 +1,57 @@
+# eClinicalWorks to FHIR R4 DiagnosticReport Mapping
+
+source_system: eclinicalworks
+source_table: laborder
+target_resource: DiagnosticReport
+
+field_mappings:
+  - source: laborder_id
+    target: id
+    transform: to_string
+
+  - source: accession_number
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:ecw:accession"
+    skip_if_null: true
+
+  - source: order_status
+    target: status
+    transform: ecw_order_status_to_report_status
+
+  - source: order_type
+    target: category[0].coding[0].code
+    transform: ecw_order_type_to_category
+
+  - source: loinc
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: order_name
+    target: code.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: collection_date
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: result_date
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: providerid
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true

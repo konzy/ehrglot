@@ -1,0 +1,45 @@
+# eClinicalWorks to FHIR R4 Encounter Mapping
+
+source_system: eclinicalworks
+source_table: enc
+target_resource: Encounter
+
+field_mappings:
+  - source: enc_id
+    target: id
+    transform: to_string
+
+  - source: enc_status
+    target: status
+    transform: ecw_status_to_fhir
+
+  - source: enc_type
+    target: class.code
+    transform: ecw_type_to_class
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_date
+    target: period.start
+    transform: datetime_to_fhir_datetime
+
+  - source: closed_date
+    target: period.end
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: chief_complaint
+    target: reasonCode[0].text
+    skip_if_null: true
+
+  - source: providerid
+    target: participant[0].individual.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: facilityid
+    target: location[0].location.reference
+    transform: to_location_reference
+    skip_if_null: true

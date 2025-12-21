@@ -1,0 +1,45 @@
+# eClinicalWorks to FHIR R4 Procedure Mapping
+
+source_system: eclinicalworks
+source_table: itemprocedure
+target_resource: Procedure
+
+field_mappings:
+  - source: itemprocedure_id
+    target: id
+    transform: to_string
+
+  - source: procedure_status
+    target: status
+    transform: ecw_proc_status_to_fhir
+
+  - source: cpt
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+    skip_if_null: true
+
+  - source: procedure_desc
+    target: code.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: procedure_date
+    target: performedDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: providerid
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: notes
+    target: note[0].text
+    skip_if_null: true

@@ -1,0 +1,54 @@
+# eClinicalWorks to FHIR R4 AllergyIntolerance Mapping
+
+source_system: eclinicalworks
+source_table: itemallergy
+target_resource: AllergyIntolerance
+
+field_mappings:
+  - source: itemallergy_id
+    target: id
+    transform: to_string
+
+  - source: allergy_status
+    target: clinicalStatus.coding[0].code
+    transform: ecw_allergy_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  - source: allergy_type
+    target: type
+    transform: ecw_allergy_type_to_fhir
+
+  - source: allergen_type
+    target: category[0]
+    transform: ecw_allergen_type_to_category
+
+  - source: severity
+    target: criticality
+    transform: ecw_severity_to_criticality
+
+  - source: rxnorm
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  - source: allergen_name
+    target: code.text
+
+  - source: patientid
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: onset_date
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: created_date
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: reaction
+    target: reaction[0].manifestation[0].text
+    skip_if_null: true

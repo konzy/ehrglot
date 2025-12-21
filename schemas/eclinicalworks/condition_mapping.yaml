@@ -1,0 +1,48 @@
+# eClinicalWorks to FHIR R4 Condition Mapping
+
+source_system: eclinicalworks
+source_table: itemdiagnosis
+target_resource: Condition
+
+field_mappings:
+  - source: itemdiagnosis_id
+    target: id
+    transform: to_string
+
+  - source: diagnosis_status
+    target: clinicalStatus.coding[0].code
+    transform: ecw_diag_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-clinical"
+
+  - source: icd10
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://hl7.org/fhir/sid/icd-10-cm"
+    skip_if_null: true
+
+  - source: diagnosis_desc
+    target: code.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: onset_date
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: resolved_date
+    target: abatementDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: created_date
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
