@@ -5,7 +5,9 @@ import (
 	"os"
 
 	"github.com/konzy/ehrglot/pkg/generator/golang"
+	"github.com/konzy/ehrglot/pkg/generator/java"
 	"github.com/konzy/ehrglot/pkg/generator/python"
+	"github.com/konzy/ehrglot/pkg/generator/rust"
 	"github.com/konzy/ehrglot/pkg/generator/typescript"
 	"github.com/konzy/ehrglot/pkg/schema"
 	"github.com/spf13/cobra"
@@ -28,6 +30,8 @@ Supports generating:
   - Python dataclasses
   - Go structs
   - TypeScript interfaces
+  - Java classes
+  - Rust structs
 
 Example:
   ehrglot generate --lang python --output ./generated`,
@@ -49,7 +53,7 @@ func generateCmd() *cobra.Command {
 		Short: "Generate code from schemas",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loader := schema.NewLoader(schemaDir)
-			
+
 			schemas, err := loader.LoadAll()
 			if err != nil {
 				return fmt.Errorf("failed to load schemas: %w", err)
@@ -63,6 +67,10 @@ func generateCmd() *cobra.Command {
 				generator = golang.NewGenerator()
 			case "typescript", "ts":
 				generator = typescript.NewGenerator()
+			case "java":
+				generator = java.NewGenerator()
+			case "rust", "rs":
+				generator = rust.NewGenerator()
 			default:
 				return fmt.Errorf("unsupported language: %s", language)
 			}
@@ -78,7 +86,7 @@ func generateCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&schemaDir, "schemas", "s", "schemas", "Schema directory path")
 	cmd.Flags().StringVarP(&outputDir, "output", "o", "./generated", "Output directory")
-	cmd.Flags().StringVarP(&language, "lang", "l", "python", "Target language (python, go, typescript)")
+	cmd.Flags().StringVarP(&language, "lang", "l", "python", "Target language (python, go, typescript, java, rust)")
 
 	return cmd
 }
@@ -89,7 +97,7 @@ func listCmd() *cobra.Command {
 		Short: "List available schemas",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			loader := schema.NewLoader(schemaDir)
-			
+
 			schemas, err := loader.ListSchemas()
 			if err != nil {
 				return fmt.Errorf("failed to list schemas: %w", err)
