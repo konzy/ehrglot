@@ -1,0 +1,54 @@
+# NextGen to FHIR R4 AllergyIntolerance Mapping
+
+source_system: nextgen
+source_table: NGProd.dbo.patient_allergy
+target_resource: AllergyIntolerance
+
+field_mappings:
+  - source: allergy_id
+    target: id
+    transform: to_string
+
+  - source: allergy_status
+    target: clinicalStatus.coding[0].code
+    transform: nextgen_allergy_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  - source: allergy_type
+    target: type
+    transform: nextgen_allergy_type_to_fhir
+
+  - source: allergen_type
+    target: category[0]
+    transform: nextgen_allergen_type_to_category
+
+  - source: severity
+    target: criticality
+    transform: nextgen_severity_to_criticality
+
+  - source: rxnorm_code
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  - source: allergen_desc
+    target: code.text
+
+  - source: person_id
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: onset_date
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: create_timestamp
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: reaction_desc
+    target: reaction[0].manifestation[0].text
+    skip_if_null: true

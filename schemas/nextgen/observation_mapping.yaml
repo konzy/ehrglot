@@ -1,0 +1,62 @@
+# NextGen to FHIR R4 Observation Mapping
+
+source_system: nextgen
+source_table: NGProd.dbo.lab_results_obr_p
+target_resource: Observation
+
+field_mappings:
+  - source: lab_results_obr_id
+    target: id
+    transform: to_string
+
+  - source: result_status
+    target: status
+    transform: nextgen_result_status_to_fhir
+
+  - source: null
+    target: category[0].coding[0].code
+    default: laboratory
+
+  - source: loinc_code
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: procedure_name
+    target: code.text
+
+  - source: person_id
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: result_date_time
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: numeric_result
+    target: valueQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: result_units
+    target: valueQuantity.unit
+    skip_if_null: true
+
+  - source: result_data
+    target: valueString
+    condition: "numeric_result IS NULL"
+
+  - source: abnormal_flag
+    target: interpretation[0].coding[0].code
+    transform: nextgen_abnormal_to_interpretation
+    skip_if_null: true
+
+  - source: reference_range
+    target: referenceRange[0].text
+    skip_if_null: true

@@ -1,0 +1,45 @@
+# NextGen to FHIR R4 Procedure Mapping
+
+source_system: nextgen
+source_table: NGProd.dbo.patient_procedure
+target_resource: Procedure
+
+field_mappings:
+  - source: procedure_id
+    target: id
+    transform: to_string
+
+  - source: procedure_status
+    target: status
+    transform: nextgen_proc_status_to_fhir
+
+  - source: cpt_code
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+    skip_if_null: true
+
+  - source: procedure_desc
+    target: code.text
+
+  - source: person_id
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: procedure_date
+    target: performedDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: provider_id
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: notes
+    target: note[0].text
+    skip_if_null: true

@@ -1,0 +1,63 @@
+# NextGen to FHIR R4 Immunization Mapping
+
+source_system: nextgen
+source_table: NGProd.dbo.patient_immunization
+target_resource: Immunization
+
+field_mappings:
+  - source: immunization_id
+    target: id
+    transform: to_string
+
+  - source: imm_status
+    target: status
+    transform: nextgen_imm_status_to_fhir
+
+  - source: cvx_code
+    target: vaccineCode.coding[0].code
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+    skip_if_null: true
+
+  - source: vaccine_name
+    target: vaccineCode.text
+
+  - source: person_id
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: administered_date
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: provider_id
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: lot_number
+    target: lotNumber
+    skip_if_null: true
+
+  - source: expiration_date
+    target: expirationDate
+    transform: date_to_fhir_date
+    skip_if_null: true
+
+  - source: dose_amount
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: route
+    target: route.text
+    skip_if_null: true
+
+  - source: site
+    target: site.text
+    skip_if_null: true

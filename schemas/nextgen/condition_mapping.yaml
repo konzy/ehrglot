@@ -1,0 +1,53 @@
+# NextGen to FHIR R4 Condition Mapping
+
+source_system: nextgen
+source_table: NGProd.dbo.patient_diagnosis
+target_resource: Condition
+
+field_mappings:
+  - source: diagnosis_id
+    target: id
+    transform: to_string
+
+  - source: diagnosis_status
+    target: clinicalStatus.coding[0].code
+    transform: nextgen_diag_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/condition-clinical"
+
+  - source: icd10_code
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://hl7.org/fhir/sid/icd-10-cm"
+    skip_if_null: true
+
+  - source: description
+    target: code.text
+
+  - source: person_id
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: onset_date
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: resolved_date
+    target: abatementDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: create_timestamp
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: diagnosing_provider_id
+    target: asserter.reference
+    transform: to_practitioner_reference
+    skip_if_null: true

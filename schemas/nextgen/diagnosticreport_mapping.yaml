@@ -1,0 +1,57 @@
+# NextGen to FHIR R4 DiagnosticReport Mapping
+
+source_system: nextgen
+source_table: NGProd.dbo.lab_results_obr
+target_resource: DiagnosticReport
+
+field_mappings:
+  - source: lab_results_obr_id
+    target: id
+    transform: to_string
+
+  - source: accession_number
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:nextgen:accession"
+    skip_if_null: true
+
+  - source: order_status
+    target: status
+    transform: nextgen_order_status_to_report_status
+
+  - source: category_cd
+    target: category[0].coding[0].code
+    transform: nextgen_category_to_fhir
+
+  - source: loinc_code
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: procedure_name
+    target: code.text
+
+  - source: person_id
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: enc_id
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: collection_date_time
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: result_date_time
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: interpreting_provider_id
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
