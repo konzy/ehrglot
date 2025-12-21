@@ -1,72 +1,87 @@
 # EHRglot
 
-EHR conversion system with PII tagging and data masking for Snowflake/Databricks.
+Healthcare schema definitions and multi-language code generator.
 
 ## Features
 
-- **Multi-Backend Support**: Arrow, Polars, DuckDB for high-performance data processing
-- **FHIR R4 Canonical Model**: Industry-standard intermediate representation
-- **PII Detection & Tagging**: Automatic detection of HIPAA Safe Harbor identifiers
-- **Masking Policy Generation**: Snowflake DDM and Databricks Unity Catalog policies
-- **YAML Schema Definitions**: Flexible, version-controlled schema mappings
+- **YAML Schemas** - FHIR R4, HL7 v2.x, C-CDA, and EHR vendor mappings
+- **Code Generation** - Generate type-safe code from schemas
+- **Multi-language** - Python, Go, TypeScript support
 
 ## Installation
 
 ```bash
-# Using uv (recommended)
-uv sync
-
-# With dev dependencies
-uv sync --extra dev
+go install github.com/konzy/ehrglot/cmd/ehrglot@latest
 ```
 
-## Quick Start
-
-```python
-from ehrglot import ConversionEngine
-from ehrglot.backends import PolarsBackend
-
-engine = ConversionEngine(backend=PolarsBackend())
-
-# Convert Epic Clarity data to Snowflake format with masking policies
-result = engine.convert(
-    source="epic_clarity_export.parquet",
-    source_system="epic_clarity",
-    target_system="snowflake",
-)
-
-# Get generated masking policies
-print(result.masking_policies)
-```
-
-## Development
-
+Or build from source:
 ```bash
-# Install with dev dependencies
-uv sync --extra dev
-
-# Run tests
-uv run pytest
-
-# Run linting
-uv run ruff check src/ tests/
-
-# Run type checking
-uv run mypy src/
-
-# Install pre-commit hooks
-uv run pre-commit install
+go build -o bin/ehrglot ./cmd/ehrglot
 ```
 
-## Architecture
+## Usage
+
+### List Available Schemas
+```bash
+ehrglot list
+```
+
+### Generate Code
+```bash
+# Generate Python dataclasses
+ehrglot generate --lang python --output ./generated
+
+# Generate Go structs
+ehrglot generate --lang go --output ./generated
+
+# Generate TypeScript interfaces
+ehrglot generate --lang typescript --output ./generated
+```
+
+## Schema Directory Structure
 
 ```
-Source EHR (Epic/Cerner) → FHIR R4 (Canonical) → Target (Snowflake/Databricks)
-                              ↓
-                     PII Detection & Tagging
-                              ↓
-                     Masking Policy Generation
+schemas/
+├── fhir_r4/           # FHIR R4 resource definitions
+├── hl7v2/             # HL7 v2.x segment mappings
+├── ccda/              # C-CDA template mappings
+├── epic_clarity/      # Epic Clarity → FHIR mappings
+├── cerner_millennium/ # Cerner → FHIR mappings
+└── ...
 ```
+
+## Generated Output
+
+### Python
+```python
+@dataclass
+class Patient:
+    id: str
+    birth_date: date | None = None
+    gender: str | None = None
+```
+
+### Go
+```go
+type Patient struct {
+    ID        string    `json:"id"`
+    BirthDate *time.Time `json:"birthDate,omitempty"`
+    Gender    string    `json:"gender,omitempty"`
+}
+```
+
+### TypeScript
+```typescript
+interface Patient {
+    id: string;
+    birthDate?: string;
+    gender?: string;
+}
+```
+
+## Related Projects
+
+- [ehrglot-python](https://github.com/konzy/ehrglot-python) - Python runtime library with PII detection, masking, and HL7 parsing
 
 ## License
 
