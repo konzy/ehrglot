@@ -1,0 +1,141 @@
+# Epic HL7 v2.x Z-Segment Overrides
+# Extends base HL7 v2.x mappings with Epic-specific segments
+
+base_mapping: hl7v2/adt_patient_mapping
+vendor: epic
+version: "2023.1"
+
+description: |
+  Epic-specific HL7 v2.x extensions for ADT messages.
+  Epic commonly uses Z-segments for additional patient data:
+  - ZPI: Extended Patient Information
+  - ZPD: Patient Demographics (additional)
+  - ZPV: Extended Visit Information
+  - ZAL: Allergy Information
+
+# Epic ZPI Segment - Extended Patient Information
+zpi_mappings:
+  # ZPI-1: Epic Patient ID (MyChart ID)
+  - source: ZPI-1
+    target: identifier[2].value
+    target_context:
+      identifier[2].system: "urn:oid:1.2.840.114350.1.1"
+      identifier[2].type.coding[0].code: MR
+      identifier[2].type.coding[0].display: "Epic MyChart ID"
+    skip_if_null: true
+
+  # ZPI-2: Enterprise Patient ID
+  - source: ZPI-2
+    target: identifier[3].value
+    target_context:
+      identifier[3].system: "urn:oid:1.2.840.114350.1.13"
+      identifier[3].type.coding[0].code: EPIC_EMP
+    skip_if_null: true
+
+  # ZPI-3: Patient Portal Status
+  - source: ZPI-3
+    target: extension[3].valueCode
+    target_context:
+      extension[3].url: "http://epic.com/fhir/StructureDefinition/patient-portal-status"
+    skip_if_null: true
+
+  # ZPI-4: Preferred Name
+  - source: ZPI-4
+    target: name[1].given[0]
+    target_context:
+      name[1].use: nickname
+    skip_if_null: true
+
+  # ZPI-5: Mother's Maiden Name
+  - source: ZPI-5
+    target: extension[4].valueString
+    target_context:
+      extension[4].url: "http://hl7.org/fhir/StructureDefinition/patient-mothersMaidenName"
+    skip_if_null: true
+
+  # ZPI-6: Sexual Orientation
+  - source: ZPI-6
+    target: extension[5].valueCodeableConcept.coding[0].code
+    target_context:
+      extension[5].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-sexual-orientation"
+    skip_if_null: true
+
+  # ZPI-7: Gender Identity
+  - source: ZPI-7
+    target: extension[6].valueCodeableConcept.coding[0].code
+    target_context:
+      extension[6].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-genderIdentity"
+    skip_if_null: true
+
+# Epic ZPV Segment - Extended Visit Information
+zpv_mappings:
+  # ZPV-1: Epic Encounter CSN
+  - source: ZPV-1
+    target: identifier[1].value
+    target_context:
+      identifier[1].system: "urn:oid:1.2.840.114350.1.13.csn"
+      identifier[1].type.coding[0].code: EPIC_CSN
+    skip_if_null: true
+
+  # ZPV-2: Department ID
+  - source: ZPV-2
+    target: serviceProvider.identifier.value
+    skip_if_null: true
+
+  # ZPV-3: Department Name
+  - source: ZPV-3
+    target: serviceProvider.display
+    skip_if_null: true
+
+  # ZPV-4: Appointment Type
+  - source: ZPV-4
+    target: type[1].coding[0].code
+    target_context:
+      type[1].coding[0].system: "http://epic.com/fhir/CodeSystem/appointment-type"
+    skip_if_null: true
+
+  # ZPV-5: Visit Type
+  - source: ZPV-5
+    target: type[2].text
+    skip_if_null: true
+
+  # ZPV-6: Coverage/Benefit Plan
+  - source: ZPV-6
+    target: extension[0].valueReference.display
+    target_context:
+      extension[0].url: "http://epic.com/fhir/StructureDefinition/coverage-plan"
+    skip_if_null: true
+
+# Epic ZAL Segment - Allergy Information (extends base allergy)
+zal_mappings:
+  # ZAL-1: Epic Allergy ID
+  - source: ZAL-1
+    target: identifier[1].value
+    target_context:
+      identifier[1].system: "urn:oid:1.2.840.114350.1.13.allergy"
+    skip_if_null: true
+
+  # ZAL-2: Allergy Source
+  - source: ZAL-2
+    target: extension[0].valueString
+    target_context:
+      extension[0].url: "http://epic.com/fhir/StructureDefinition/allergy-source"
+    skip_if_null: true
+
+  # ZAL-3: Documentation Method
+  - source: ZAL-3
+    target: extension[1].valueCode
+    target_context:
+      extension[1].url: "http://epic.com/fhir/StructureDefinition/documentation-method"
+    skip_if_null: true
+
+# Transform functions for Epic-specific codes
+epic_transforms:
+  - name: epic_dept_to_location
+    description: Convert Epic department ID to location reference
+
+  - name: epic_coverage_to_reference
+    description: Convert Epic coverage ID to Coverage reference
+
+  - name: epic_csn_to_encounter
+    description: Convert Epic CSN to Encounter reference

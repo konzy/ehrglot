@@ -1,0 +1,106 @@
+# Meditech HL7 v2.x Overrides
+# Extends base HL7 v2.x mappings with Meditech-specific handling
+
+base_mapping: hl7v2/adt_patient_mapping
+vendor: meditech
+version: "6.x/Expanse"
+
+description: |
+  Meditech-specific HL7 v2.x extensions.
+  Meditech has unique segment ordering and field usage:
+  - Non-standard date formats in some implementations
+  - Custom identifier schemes
+  - Magic (6.x) vs Expanse differences
+
+# Meditech-specific PID handling
+pid_overrides:
+  # Meditech Primary Account Number
+  - source: PID-18.1
+    target: identifier[0].value
+    target_context:
+      identifier[0].type.coding[0].code: AN
+      identifier[0].system: "urn:oid:meditech.account"
+    description: Meditech Account Number
+
+  # Meditech Unit Number (MRN)
+  - source: PID-3.1
+    target: identifier[1].value
+    target_context:
+      identifier[1].type.coding[0].code: MR
+      identifier[1].system: "urn:oid:meditech.mrn"
+    description: Meditech Unit Number
+
+  # Meditech sometimes uses PID-4 for alternate patient ID
+  - source: PID-4.1
+    target: identifier[2].value
+    target_context:
+      identifier[2].type.coding[0].code: ALT_MRN
+    skip_if_null: true
+
+# Meditech date format handling
+# Some Meditech implementations use non-standard date formats
+date_transforms:
+  # Meditech sometimes sends MMDDYYYY instead of YYYYMMDD
+  - source_format: "MMDDYYYY"
+    target_format: "YYYY-MM-DD"
+    transform: meditech_date_to_fhir
+
+  # Meditech time format variations
+  - source_format: "HHMMSS"
+    transform: meditech_time_to_fhir
+
+# Meditech-specific PV1 handling
+pv1_overrides:
+  # Meditech Visit Number
+  - source: PV1-19.1
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:meditech.visit"
+
+  # Meditech case number (for surgical cases)
+  - source: PV1-5.1
+    target: identifier[1].value
+    target_context:
+      identifier[1].type.coding[0].code: CASE_NUM
+    skip_if_null: true
+    description: Surgical case number
+
+  # Meditech nursing station format
+  - source: PV1-3.1
+    target: location[0].location.identifier.value
+    transform: meditech_location_to_fhir
+    description: Nursing station in format NS-ROOM-BED
+
+# Meditech code mappings
+code_mappings:
+  # Patient type
+  - source_field: PV1-2
+    value_map:
+      I: IMP        # Inpatient
+      O: AMB        # Outpatient
+      E: EMER       # Emergency
+      S: AMB        # Same day surgery (Meditech specific)
+      R: AMB        # Recurring
+      P: PRENC      # Pre-admission
+
+  # Admit source (Meditech codes)
+  - source_field: PV1-14
+    value_map:
+      1: hosp-trans    # Transfer from hospital
+      2: emd           # Emergency department
+      4: other-fac     # Court/law enforcement
+      5: snf           # Skilled nursing
+      6: hosp-trans    # Transfer within
+      7: hosp-trans    # Emergency room
+      8: outp          # Outpatient surgery
+
+# Meditech-specific transforms
+meditech_transforms:
+  - name: meditech_date_to_fhir
+    description: Handle Meditech date format variations
+
+  - name: meditech_location_to_fhir
+    description: Parse Meditech NS-ROOM-BED format
+
+  - name: meditech_provider_to_fhir
+    description: Handle Meditech provider ID format

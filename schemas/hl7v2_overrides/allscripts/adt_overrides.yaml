@@ -1,0 +1,105 @@
+# Allscripts HL7 v2.x Overrides
+# Extends base HL7 v2.x mappings with Allscripts-specific handling
+
+base_mapping: hl7v2/adt_patient_mapping
+vendor: allscripts
+version: "Sunrise/TouchWorks"
+
+description: |
+  Allscripts-specific HL7 v2.x extensions.
+  Covers both Sunrise Clinical Manager and TouchWorks variations.
+  Allscripts implementations have vendor-specific identifier schemes.
+
+# Allscripts-specific PID handling
+pid_overrides:
+  # Allscripts Enterprise Person ID
+  - source: PID-3.1
+    target: identifier[0].value
+    condition: "PID-3.5 == 'EPI'"
+    target_context:
+      identifier[0].type.coding[0].code: EPI
+      identifier[0].system: "urn:oid:allscripts.enterprise"
+    description: Allscripts Enterprise Person ID
+
+  # Allscripts MRN
+  - source: PID-3(2).1
+    target: identifier[1].value
+    target_context:
+      identifier[1].type.coding[0].code: MR
+    skip_if_null: true
+
+  # Allscripts Chart Number
+  - source: PID-3(3).1
+    target: identifier[2].value
+    target_context:
+      identifier[2].type.coding[0].code: CHART
+      identifier[2].system: "urn:oid:allscripts.chart"
+    skip_if_null: true
+
+# Allscripts-specific PV1 handling
+pv1_overrides:
+  # Allscripts Encounter ID
+  - source: PV1-19.1
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:allscripts.encounter"
+
+  # Allscripts uses custom patient class codes
+  - source: PV1-2
+    target: class.code
+    transform: allscripts_class_to_fhir
+    value_mapping:
+      IP: IMP       # Inpatient
+      OP: AMB       # Outpatient
+      ER: EMER      # Emergency
+      OB: OBSENC    # Observation
+      SD: AMB       # Same day
+
+# Allscripts-specific observation handling
+obx_overrides:
+  # Allscripts result status codes
+  - source: OBX-11
+    transform: allscripts_result_status
+    value_mapping:
+      F: final
+      P: preliminary
+      C: corrected
+      I: registered
+      X: cancelled
+      W: entered-in-error
+      R: registered   # Allscripts-specific: Received
+
+# Allscripts provider handling
+provider_overrides:
+  # Allscripts uses specific provider ID format
+  - source: PV1-7.1
+    target: participant[0].individual.identifier.value
+    target_context:
+      participant[0].individual.identifier.system: "urn:oid:allscripts.provider"
+
+  # Allscripts NPI in separate field
+  - source: PV1-7.9
+    target: participant[0].individual.identifier[1].value
+    target_context:
+      participant[0].individual.identifier[1].system: "http://hl7.org/fhir/sid/us-npi"
+    skip_if_null: true
+
+# Allscripts code system mappings
+code_mappings:
+  # Allscripts uses internal drug codes
+  - type: medication
+    allscripts_system: "urn:oid:allscripts.drug"
+    mapping_table: allscripts_to_rxnorm
+
+  # Allscripts procedure codes
+  - type: procedure
+    allscripts_system: "urn:oid:allscripts.procedure"
+    mapping_table: allscripts_to_cpt
+
+# Allscripts-specific transforms
+allscripts_transforms:
+  - name: allscripts_class_to_fhir
+    description: Convert Allscripts patient class to FHIR
+
+  - name: allscripts_result_status
+    description: Map Allscripts-specific result statuses

@@ -1,0 +1,139 @@
+# Cerner HL7 v2.x Overrides
+# Extends base HL7 v2.x mappings with Cerner-specific fields
+
+base_mapping: hl7v2/adt_patient_mapping
+vendor: cerner
+version: "2023.1"
+
+description: |
+  Cerner Millennium-specific HL7 v2.x extensions.
+  Cerner uses custom OBX subtypes and extended PID fields.
+  Also handles Cerner-specific code systems and identifiers.
+
+# Cerner-specific PID extensions
+pid_overrides:
+  # Cerner uses PID-3 with multiple repetitions
+  # Rep 1: FIN (Financial Number)
+  - source: PID-3(1).1
+    target: identifier[0].value
+    target_context:
+      identifier[0].type.coding[0].code: FIN
+      identifier[0].system: "urn:oid:2.16.840.1.113883.3.787.0.0"
+    description: Cerner Financial Number
+
+  # Rep 2: MRN
+  - source: PID-3(2).1
+    target: identifier[1].value
+    target_context:
+      identifier[1].type.coding[0].code: MR
+    description: Cerner MRN
+
+  # Rep 3: Person ID
+  - source: PID-3(3).1
+    target: identifier[2].value
+    target_context:
+      identifier[2].type.coding[0].code: CERNER_PERSON
+      identifier[2].system: "urn:oid:2.16.840.1.113883.3.787.0.1"
+    skip_if_null: true
+
+  # Cerner extended demographics in PID-38 (Production class code)
+  - source: PID-38
+    target: extension[0].valueCode
+    target_context:
+      extension[0].url: "http://cerner.com/fhir/StructureDefinition/production-class"
+    skip_if_null: true
+
+# Cerner-specific PV1 extensions
+pv1_overrides:
+  # Cerner Encounter ID in PV1-19
+  - source: PV1-19.1
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:2.16.840.1.113883.3.787.0.2"
+      identifier[0].type.coding[0].code: CERNER_ENCNTR
+
+  # Cerner uses PV1-50 for alternate visit ID
+  - source: PV1-50.1
+    target: identifier[1].value
+    target_context:
+      identifier[1].type.coding[0].code: ALT_ENCNTR
+    skip_if_null: true
+
+  # Cerner Financial Class in PV1-20
+  - source: PV1-20
+    target: extension[1].valueCode
+    target_context:
+      extension[1].url: "http://cerner.com/fhir/StructureDefinition/financial-class"
+    transform: cerner_fin_class_to_code
+    skip_if_null: true
+
+# Cerner OBX extensions for observations
+obx_overrides:
+  # Cerner uses OBX-17 for observation method
+  - source: OBX-17.1
+    target: method.coding[0].code
+    skip_if_null: true
+
+  - source: OBX-17.2
+    target: method.coding[0].display
+    skip_if_null: true
+
+  # Cerner performer in OBX-16 (Responsible Observer)
+  - source: OBX-16.1
+    target: performer[0].identifier.value
+    target_context:
+      performer[0].identifier.system: "urn:oid:2.16.840.1.113883.3.787.0.3"
+    skip_if_null: true
+
+  # Cerner-specific OBX-25 (Performing Organization)
+  - source: OBX-25.1
+    target: performer[1].identifier.value
+    skip_if_null: true
+
+  - source: OBX-25.2
+    target: performer[1].display
+    skip_if_null: true
+
+# Cerner code system mappings
+code_system_mappings:
+  # Cerner CodeSet mappings to standard terminologies
+  - cerner_codeset: 72  # Gender
+    fhir_system: "http://hl7.org/fhir/administrative-gender"
+    value_map:
+      362: male      # Male
+      363: female    # Female
+      364: unknown   # Unknown
+
+  - cerner_codeset: 8  # Race
+    fhir_system: "urn:oid:2.16.840.1.113883.6.238"
+    description: OMB race categories
+
+  - cerner_codeset: 27  # Ethnicity
+    fhir_system: "urn:oid:2.16.840.1.113883.6.238"
+    description: OMB ethnicity categories
+
+  - cerner_codeset: 23  # Marital Status
+    fhir_system: "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus"
+    value_map:
+      309236: M      # Married
+      309237: S      # Single
+      309238: D      # Divorced
+      309239: W      # Widowed
+      309240: SEP    # Separated
+
+  - cerner_codeset: 69  # Admit Source
+    fhir_system: "http://terminology.hl7.org/CodeSystem/admit-source"
+
+  - cerner_codeset: 19  # Discharge Disposition
+    fhir_system: "http://terminology.hl7.org/CodeSystem/discharge-disposition"
+
+# Cerner-specific transforms
+cerner_transforms:
+  - name: cerner_codeset_to_fhir
+    description: Generic CodeSet to FHIR value mapping
+
+  - name: cerner_fin_class_to_code
+    description: Financial class code mapping
+
+  - name: cerner_person_to_patient
+    description: Convert Cerner person ID to Patient reference
