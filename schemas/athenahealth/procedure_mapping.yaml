@@ -1,0 +1,49 @@
+# athenahealth to FHIR R4 Procedure Mapping
+
+source_system: athenahealth
+source_table: procedure
+target_resource: Procedure
+
+source_schema:
+  database: athenahealth
+  table: procedure
+
+field_mappings:
+  - source: procedureid
+    target: id
+    transform: to_string
+
+  - source: procedurestatus
+    target: status
+    transform: athena_proc_status_to_fhir
+
+  - source: cptcode
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+    skip_if_null: true
+
+  - source: proceduredescription
+    target: code.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: encounterid
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: proceduredate
+    target: performedDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: providerid
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: notes
+    target: note[0].text
+    skip_if_null: true

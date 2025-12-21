@@ -1,0 +1,67 @@
+# athenahealth to FHIR R4 Immunization Mapping
+
+source_system: athenahealth
+source_table: immunization
+target_resource: Immunization
+
+source_schema:
+  database: athenahealth
+  table: immunization
+
+field_mappings:
+  - source: immunizationid
+    target: id
+    transform: to_string
+
+  - source: immunizationstatus
+    target: status
+    transform: athena_imm_status_to_fhir
+
+  - source: cvx
+    target: vaccineCode.coding[0].code
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+    skip_if_null: true
+
+  - source: vaccinename
+    target: vaccineCode.text
+
+  - source: patientid
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: encounterid
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: administereddate
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: providerid
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: lotnumber
+    target: lotNumber
+    skip_if_null: true
+
+  - source: expirationdate
+    target: expirationDate
+    transform: date_to_fhir_date
+    skip_if_null: true
+
+  - source: doseamount
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: route
+    target: route.text
+    skip_if_null: true
+
+  - source: site
+    target: site.text
+    skip_if_null: true

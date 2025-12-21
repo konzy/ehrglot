@@ -1,0 +1,58 @@
+# athenahealth to FHIR R4 AllergyIntolerance Mapping
+
+source_system: athenahealth
+source_table: allergy
+target_resource: AllergyIntolerance
+
+source_schema:
+  database: athenahealth
+  table: allergy
+
+field_mappings:
+  - source: allergyid
+    target: id
+    transform: to_string
+
+  - source: allergystatus
+    target: clinicalStatus.coding[0].code
+    transform: athena_allergy_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  - source: allergytype
+    target: type
+    transform: athena_allergy_type_to_fhir
+
+  - source: allergycategory
+    target: category[0]
+    transform: athena_allergy_category_to_fhir
+
+  - source: severity
+    target: criticality
+    transform: athena_severity_to_criticality
+
+  - source: rxnorm
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  - source: allergenname
+    target: code.text
+
+  - source: patientid
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: onsetdate
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: noteddate
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: reaction
+    target: reaction[0].manifestation[0].text
+    skip_if_null: true

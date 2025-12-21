@@ -1,0 +1,61 @@
+# athenahealth to FHIR R4 Practitioner Mapping
+
+source_system: athenahealth
+source_table: provider
+target_resource: Practitioner
+
+source_schema:
+  database: athenahealth
+  table: provider
+
+field_mappings:
+  - source: providerid
+    target: id
+    transform: to_string
+
+  - source: npi
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "http://hl7.org/fhir/sid/us-npi"
+    skip_if_null: true
+
+  - source: isactive
+    target: active
+    transform: to_boolean
+
+  - source: firstname
+    target: name[0].given[0]
+
+  - source: lastname
+    target: name[0].family
+
+  - source: title
+    target: name[0].prefix[0]
+    skip_if_null: true
+
+  - source: credentials
+    target: name[0].suffix[0]
+    skip_if_null: true
+
+  - source: phone
+    target: telecom[0].value
+    transform: normalize_phone
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: work
+    skip_if_null: true
+
+  - source: email
+    target: telecom[1].value
+    target_context:
+      telecom[1].system: email
+    skip_if_null: true
+
+  - source: gender
+    target: gender
+    transform: athena_gender_to_fhir
+    skip_if_null: true
+
+  - source: specialty
+    target: qualification[0].code.text
+    skip_if_null: true

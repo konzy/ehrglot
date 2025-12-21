@@ -1,0 +1,49 @@
+# athenahealth to FHIR R4 Encounter Mapping
+
+source_system: athenahealth
+source_table: encounter
+target_resource: Encounter
+
+source_schema:
+  database: athenahealth
+  table: encounter
+
+field_mappings:
+  - source: encounterid
+    target: id
+    transform: to_string
+
+  - source: status
+    target: status
+    transform: athena_status_to_fhir
+
+  - source: encountertype
+    target: class.code
+    transform: athena_type_to_class
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: encounterdate
+    target: period.start
+    transform: datetime_to_fhir_datetime
+
+  - source: closeddate
+    target: period.end
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: reasonforvisit
+    target: reasonCode[0].text
+    skip_if_null: true
+
+  - source: providerid
+    target: participant[0].individual.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: departmentid
+    target: location[0].location.reference
+    transform: to_location_reference
+    skip_if_null: true

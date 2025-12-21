@@ -1,0 +1,65 @@
+# athenahealth to FHIR R4 DiagnosticReport Mapping
+
+source_system: athenahealth
+source_table: labresult
+target_resource: DiagnosticReport
+
+source_schema:
+  database: athenahealth
+  table: labresult
+
+field_mappings:
+  - source: labresultid
+    target: id
+    transform: to_string
+
+  - source: accessionnumber
+    target: identifier[0].value
+    target_context:
+      identifier[0].system: "urn:oid:athenahealth:accession"
+    skip_if_null: true
+
+  - source: resultstatus
+    target: status
+    transform: athena_result_status_to_report_status
+
+  - source: reportcategory
+    target: category[0].coding[0].code
+    transform: athena_category_to_fhir
+
+  - source: loinc
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: reportname
+    target: code.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: encounterid
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: collectiondate
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: resultdate
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: providerid
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: conclusion
+    target: conclusion
+    skip_if_null: true

@@ -1,0 +1,62 @@
+# athenahealth to FHIR R4 Observation Mapping
+
+source_system: athenahealth
+source_table: result
+target_resource: Observation
+
+source_schema:
+  database: athenahealth
+  table: result
+
+field_mappings:
+  - source: resultid
+    target: id
+    transform: to_string
+
+  - source: resultstatus
+    target: status
+    transform: athena_result_status_to_fhir
+
+  - source: resulttype
+    target: category[0].coding[0].code
+    transform: athena_result_type_to_category
+
+  - source: loinc
+    target: code.coding[0].code
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: resultname
+    target: code.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: encounterid
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: resultdatetime
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: numericvalue
+    target: valueQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: units
+    target: valueQuantity.unit
+    skip_if_null: true
+
+  - source: textvalue
+    target: valueString
+    condition: "numericvalue IS NULL"
+
+  - source: abnormalflag
+    target: interpretation[0].coding[0].code
+    transform: athena_abnormal_to_interpretation
+    skip_if_null: true

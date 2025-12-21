@@ -1,0 +1,71 @@
+# athenahealth to FHIR R4 MedicationRequest Mapping
+
+source_system: athenahealth
+source_table: prescription
+target_resource: MedicationRequest
+
+source_schema:
+  database: athenahealth
+  table: prescription
+
+field_mappings:
+  - source: prescriptionid
+    target: id
+    transform: to_string
+
+  - source: prescriptionstatus
+    target: status
+    transform: athena_prescription_status_to_fhir
+
+  - source: null
+    target: intent
+    default: order
+
+  - source: rxnorm
+    target: medicationCodeableConcept.coding[0].code
+    target_context:
+      medicationCodeableConcept.coding[0].system: "http://www.nlm.nih.gov/research/umls/rxnorm"
+    skip_if_null: true
+
+  - source: medicationname
+    target: medicationCodeableConcept.text
+
+  - source: patientid
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: encounterid
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: prescribeddate
+    target: authoredOn
+    transform: datetime_to_fhir_datetime
+
+  - source: providerid
+    target: requester.reference
+    transform: to_practitioner_reference
+
+  - source: dosage
+    target: dosageInstruction[0].text
+    skip_if_null: true
+
+  - source: frequency
+    target: dosageInstruction[0].timing.code.text
+    skip_if_null: true
+
+  - source: quantity
+    target: dispenseRequest.quantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: refills
+    target: dispenseRequest.numberOfRepeatsAllowed
+    transform: to_integer
+    skip_if_null: true
+
+  - source: dayssupply
+    target: dispenseRequest.expectedSupplyDuration.value
+    transform: to_decimal
+    skip_if_null: true
