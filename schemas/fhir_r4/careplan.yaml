@@ -90,6 +90,22 @@ fields:
   - name: activity
     type: array<BackboneElement>
     description: Action to occur as part of plan
+    fields:
+      - name: outcomeCodeableConcept
+        type: array<CodeableConcept>
+        description: Results of the activity
+      - name: outcomeReference
+        type: array<Reference>
+        description: Appointment, Encounter, Procedure, etc.
+      - name: progress
+        type: array<Annotation>
+        description: Comments about activity status
+      - name: reference
+        type: Reference
+        description: Activity details defined in specific resource
+      - name: detail
+        type: BackboneElement
+        description: In-line definition of activity
 
   - name: note
     type: array<Annotation>

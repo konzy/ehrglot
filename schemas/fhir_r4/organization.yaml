@@ -47,6 +47,19 @@ fields:
   - name: contact
     type: array<BackboneElement>
     description: Contact for the organization
+    fields:
+      - name: purpose
+        type: CodeableConcept
+        description: The type of contact
+      - name: name
+        type: HumanName
+        description: A name associated with the contact
+      - name: telecom
+        type: array<ContactPoint>
+        description: Contact details
+      - name: address
+        type: Address
+        description: Visiting or postal address
 
   - name: endpoint
     type: array<Reference>

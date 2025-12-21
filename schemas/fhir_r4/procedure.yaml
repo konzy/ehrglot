@@ -75,6 +75,17 @@ fields:
   - name: performer
     type: array<BackboneElement>
     description: The people who performed the procedure
+    fields:
+      - name: function
+        type: CodeableConcept
+        description: Type of performance (surgeon, anesthesiologist, etc.)
+      - name: actor
+        type: Reference
+        required: true
+        description: The reference to the practitioner
+      - name: onBehalfOf
+        type: Reference
+        description: Organization the device or practitioner was acting for
 
   - name: location
     type: Reference
@@ -121,6 +132,14 @@ fields:
   - name: focalDevice
     type: array<BackboneElement>
     description: Manipulated, implanted, or removed device
+    fields:
+      - name: action
+        type: CodeableConcept
+        description: Kind of change to device
+      - name: manipulated
+        type: Reference
+        required: true
+        description: Device that was changed
 
   - name: usedReference
     type: array<Reference>

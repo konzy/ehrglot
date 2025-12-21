@@ -103,6 +103,14 @@ fields:
     pii_category: clinical
     hipaa_identifier: photos
     masking_strategy: suppress
+    fields:
+      - name: comment
+        type: string
+        description: Comment about the image
+      - name: link
+        type: Reference
+        required: true
+        description: Reference to the image source
 
   - name: conclusion
     type: string

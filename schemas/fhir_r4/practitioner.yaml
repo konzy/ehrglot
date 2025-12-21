@@ -79,6 +79,20 @@ fields:
   - name: qualification
     type: array<BackboneElement>
     description: Certification, licenses, training
+    fields:
+      - name: identifier
+        type: array<Identifier>
+        description: Identifier for qualification
+      - name: code
+        type: CodeableConcept
+        required: true
+        description: Coded representation of qualification
+      - name: period
+        type: Period
+        description: Period during which qualification is valid
+      - name: issuer
+        type: Reference
+        description: Organization that regulates and issues qualification
 
   - name: communication
     type: array<CodeableConcept>

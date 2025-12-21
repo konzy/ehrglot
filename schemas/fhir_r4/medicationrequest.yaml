@@ -105,7 +105,39 @@ fields:
   - name: dispenseRequest
     type: BackboneElement
     description: Medication supply authorization
+    fields:
+      - name: initialFill
+        type: BackboneElement
+        description: First fill details
+      - name: dispenseInterval
+        type: Duration
+        description: Minimum period between dispenses
+      - name: validityPeriod
+        type: Period
+        description: Time period supply is authorized for
+      - name: numberOfRepeatsAllowed
+        type: unsignedInt
+        description: Number of refills authorized
+      - name: quantity
+        type: Quantity
+        description: Amount of medication to supply per dispense
+      - name: expectedSupplyDuration
+        type: Duration
+        description: Number of days supply per dispense
+      - name: performer
+        type: Reference
+        description: Intended dispenser
 
   - name: substitution
     type: BackboneElement
     description: Any restrictions on medication substitution
+    fields:
+      - name: allowedBoolean
+        type: boolean
+        description: Whether substitution is allowed
+      - name: allowedCodeableConcept
+        type: CodeableConcept
+        description: Whether substitution is allowed
+      - name: reason
+        type: CodeableConcept
+        description: Why should (not) substitution be made

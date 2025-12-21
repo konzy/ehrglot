@@ -96,6 +96,14 @@ fields:
   - name: performer
     type: array<BackboneElement>
     description: Who performed event
+    fields:
+      - name: function
+        type: CodeableConcept
+        description: Role in immunization event
+      - name: actor
+        type: Reference
+        required: true
+        description: Who performed the action
 
   - name: note
     type: array<Annotation>
@@ -111,7 +119,33 @@ fields:
   - name: reaction
     type: array<BackboneElement>
     description: Details of reaction
+    fields:
+      - name: date
+        type: dateTime
+        description: When reaction started
+      - name: detail
+        type: Reference
+        description: Additional reaction information
+      - name: reported
+        type: boolean
+        description: Indicates self-reported reaction
 
   - name: protocolApplied
     type: array<BackboneElement>
     description: Protocol followed
+    fields:
+      - name: series
+        type: string
+        description: Name of vaccine series
+      - name: authority
+        type: Reference
+        description: Who is responsible for protocol
+      - name: targetDisease
+        type: array<CodeableConcept>
+        description: Vaccine preventable disease
+      - name: doseNumberPositiveInt
+        type: positiveInt
+        description: Dose number within series
+      - name: seriesDosesPositiveInt
+        type: positiveInt
+        description: Recommended number of doses

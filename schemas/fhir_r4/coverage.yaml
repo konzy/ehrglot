@@ -87,6 +87,18 @@ fields:
   - name: class
     type: array<BackboneElement>
     description: Additional coverage classifications
+    fields:
+      - name: type
+        type: CodeableConcept
+        required: true
+        description: Type of class such as group, plan, etc.
+      - name: value
+        type: string
+        required: true
+        description: Value of the class (group number, plan ID, etc.)
+      - name: name
+        type: string
+        description: Human readable description
 
   - name: order
     type: positiveInt

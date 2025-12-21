@@ -103,3 +103,22 @@ fields:
     description: Participants involved
     pii_level: high
     pii_category: direct_identifier
+    fields:
+      - name: type
+        type: array<CodeableConcept>
+        description: Role of participant
+      - name: actor
+        type: Reference
+        description: Person, Location, Device, or HealthcareService
+      - name: required
+        type: code
+        enum: [required, optional, information-only]
+        description: Whether attendance is required
+      - name: status
+        type: code
+        required: true
+        enum: [accepted, declined, tentative, needs-action]
+        description: Participation status
+      - name: period
+        type: Period
+        description: Participation period

@@ -91,12 +91,52 @@ fields:
     description: Pertinent diagnosis information
     pii_level: medium
     pii_category: clinical
+    fields:
+      - name: sequence
+        type: positiveInt
+        required: true
+        description: Diagnosis instance identifier
+      - name: diagnosisCodeableConcept
+        type: CodeableConcept
+        description: Nature of illness or problem
+      - name: diagnosisReference
+        type: Reference
+        description: Reference to diagnosis
+      - name: type
+        type: array<CodeableConcept>
+        description: Timing or nature of diagnosis
+      - name: onAdmission
+        type: CodeableConcept
+        description: Present on admission
+      - name: packageCode
+        type: CodeableConcept
+        description: Package billing code
 
   - name: procedure
     type: array<BackboneElement>
     description: Clinical procedures performed
     pii_level: medium
     pii_category: clinical
+    fields:
+      - name: sequence
+        type: positiveInt
+        required: true
+        description: Procedure instance identifier
+      - name: type
+        type: array<CodeableConcept>
+        description: Category of procedure
+      - name: date
+        type: dateTime
+        description: When the procedure was performed
+      - name: procedureCodeableConcept
+        type: CodeableConcept
+        description: Specific clinical procedure
+      - name: procedureReference
+        type: Reference
+        description: Reference to procedure
+      - name: udi
+        type: array<Reference>
+        description: Unique device identifier
 
   - name: insurance
     type: array<BackboneElement>
@@ -108,10 +148,74 @@ fields:
     masking_strategy: partial
     masking_params:
       show_last: 4
+    fields:
+      - name: sequence
+        type: positiveInt
+        required: true
+        description: Insurance instance identifier
+      - name: focal
+        type: boolean
+        required: true
+        description: Coverage to be used for adjudication
+      - name: identifier
+        type: Identifier
+        description: Pre-assigned claim number
+      - name: coverage
+        type: Reference
+        required: true
+        description: Insurance information
+      - name: businessArrangement
+        type: string
+        description: Additional provider contract number
+      - name: preAuthRef
+        type: array<string>
+        description: Prior authorization reference number
+      - name: claimResponse
+        type: Reference
+        description: Adjudication results
 
   - name: item
     type: array<BackboneElement>
     description: Product or service provided
+    fields:
+      - name: sequence
+        type: positiveInt
+        required: true
+        description: Item instance identifier
+      - name: careTeamSequence
+        type: array<positiveInt>
+        description: Applicable care team members
+      - name: diagnosisSequence
+        type: array<positiveInt>
+        description: Applicable diagnoses
+      - name: procedureSequence
+        type: array<positiveInt>
+        description: Applicable procedures
+      - name: informationSequence
+        type: array<positiveInt>
+        description: Applicable exception/relevance
+      - name: revenue
+        type: CodeableConcept
+        description: Revenue or cost center code
+      - name: category
+        type: CodeableConcept
+        description: Benefit classification
+      - name: productOrService
+        type: CodeableConcept
+        required: true
+        description: Billing code
+      - name: modifier
+        type: array<CodeableConcept>
+        description: Product or service billing modifiers
+      - name: quantity
+        type: Quantity
+        description: Count of products or services
+      - name: unitPrice
+        type: Money
+        description: Fee or charge amount
+      - name: net
+        type: Money
+        description: Total item cost
 
   - name: total
     type: Money

@@ -42,6 +42,19 @@ fields:
   - name: ingredient
     type: array<BackboneElement>
     description: Active or inactive ingredient
+    fields:
+      - name: itemCodeableConcept
+        type: CodeableConcept
+        description: The ingredient as a concept
+      - name: itemReference
+        type: Reference
+        description: The ingredient as a substance
+      - name: isActive
+        type: boolean
+        description: Active ingredient indicator
+      - name: strength
+        type: Ratio
+        description: Quantity of ingredient present
 
   - name: batch
     type: BackboneElement

@@ -98,10 +98,27 @@ fields:
   - name: stage
     type: array<BackboneElement>
     description: Stage/grade for condition
+    fields:
+      - name: summary
+        type: CodeableConcept
+        description: Simple summary (disease specific)
+      - name: assessment
+        type: array<Reference>
+        description: Formal record of assessment
+      - name: type
+        type: CodeableConcept
+        description: Kind of staging
 
   - name: evidence
     type: array<BackboneElement>
     description: Supporting evidence
+    fields:
+      - name: code
+        type: array<CodeableConcept>
+        description: Manifestation/symptom
+      - name: detail
+        type: array<Reference>
+        description: Supporting information
 
   - name: note
     type: array<Annotation>
