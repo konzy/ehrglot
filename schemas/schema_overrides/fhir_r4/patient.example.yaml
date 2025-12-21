@@ -1,0 +1,38 @@
+# Example Patient Override
+# Demonstrates stricter privacy settings for research environments
+
+description: Research compliance overrides - stricter masking for de-identification
+
+field_overrides:
+  # Make birth date critical and only keep year
+  birthDate:
+    pii_level: critical
+    masking_strategy: generalize
+    masking_params:
+      precision: year
+
+  # Completely suppress addresses for research
+  address:
+    pii_level: critical
+    masking_strategy: suppress
+
+  # Only show last 2 digits of phone numbers
+  telecom:
+    pii_level: high
+    masking_strategy: partial
+    masking_params:
+      show_last: 2
+      mask_char: "*"
+
+  # Hash names instead of partial masking
+  name:
+    pii_level: critical
+    masking_strategy: hash
+    masking_params:
+      truncate: 16
+
+  # Treat MRN as critical PHI
+  identifier:
+    pii_level: critical
+    hipaa_identifier: mrn
+    masking_strategy: tokenize

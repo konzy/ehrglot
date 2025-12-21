@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -19,6 +19,9 @@ from ehrglot.core.types import (
     SchemaDefinition,
     SchemaMapping,
 )
+
+if TYPE_CHECKING:
+    from ehrglot.schemas.overrides import SchemaOverride, SchemaOverrideLoader
 
 
 @dataclass
@@ -104,22 +107,47 @@ def _parse_data_type(type_str: str) -> DataType:
 
 
 class SchemaLoader:
-    """Loads and validates YAML schema definitions."""
+    """Loads and validates YAML schema definitions with optional overrides.
 
-    def __init__(self, schema_dir: str | Path) -> None:
+    Supports a schema_overrides directory for customizing PII/masking properties
+    without modifying base schemas.
+    """
+
+    def __init__(
+        self,
+        schema_dir: str | Path,
+        override_dir: str | Path | None = None,
+    ) -> None:
         """Initialize schema loader.
 
         Args:
             schema_dir: Root directory containing schema files.
+            override_dir: Optional directory for override files. If None,
+                defaults to schema_dir/schema_overrides.
         """
+        from ehrglot.schemas.overrides import SchemaOverrideLoader
+
         self.schema_dir = Path(schema_dir)
         self._cache: dict[str, Any] = {}
 
-    def load_fhir_resource(self, resource_name: str) -> FHIRResourceSchema:
+        # Set up override loader
+        if override_dir is None:
+            self.override_dir = self.schema_dir / "schema_overrides"
+        else:
+            self.override_dir = Path(override_dir)
+
+        self._override_loader: SchemaOverrideLoader | None = None
+        if self.override_dir.exists():
+            self._override_loader = SchemaOverrideLoader(self.override_dir)
+
+    def load_fhir_resource(
+        self, resource_name: str, apply_overrides: bool = True
+    ) -> FHIRResourceSchema:
         """Load a FHIR R4 resource schema.
 
         Args:
             resource_name: Name of the resource (e.g., 'patient', 'observation').
+            apply_overrides: Whether to apply overrides from schema_overrides dir.
 
         Returns:
             FHIRResourceSchema with all field definitions.
@@ -128,7 +156,7 @@ class SchemaLoader:
             FileNotFoundError: If schema file doesn't exist.
             ValueError: If schema is invalid.
         """
-        cache_key = f"fhir_r4:{resource_name}"
+        cache_key = f"fhir_r4:{resource_name}:{apply_overrides}"
         if cache_key in self._cache:
             cached: FHIRResourceSchema = self._cache[cache_key]
             return cached
@@ -140,17 +168,46 @@ class SchemaLoader:
         with open(schema_path) as f:
             data = yaml.safe_load(f)
 
+        # Load overrides if available
+        override: SchemaOverride | None = None
+        if apply_overrides and self._override_loader:
+            override = self._override_loader.load_fhir_override(resource_name)
+
         fields = []
         for field_data in data.get("fields", []):
+            field_name = field_data["name"]
+
+            # Start with base values
+            pii_level = _parse_pii_level(field_data.get("pii_level"))
+            pii_category = _parse_pii_category(field_data.get("pii_category"))
+            hipaa_identifier = _parse_hipaa_identifier(field_data.get("hipaa_identifier"))
+            masking_strategy = _parse_masking_strategy(field_data.get("masking_strategy"))
+            masking_params = field_data.get("masking_params", {})
+
+            # Apply overrides if present
+            if override:
+                field_override = override.get_field_override(field_name)
+                if field_override:
+                    if field_override.pii_level is not None:
+                        pii_level = field_override.pii_level
+                    if field_override.pii_category is not None:
+                        pii_category = field_override.pii_category
+                    if field_override.hipaa_identifier is not None:
+                        hipaa_identifier = field_override.hipaa_identifier
+                    if field_override.masking_strategy is not None:
+                        masking_strategy = field_override.masking_strategy
+                    if field_override.masking_params:
+                        masking_params = {**masking_params, **field_override.masking_params}
+
             fhir_field = FHIRField(
-                name=field_data["name"],
+                name=field_name,
                 type=field_data["type"],
                 required=field_data.get("required", False),
-                pii_level=_parse_pii_level(field_data.get("pii_level")),
-                pii_category=_parse_pii_category(field_data.get("pii_category")),
-                hipaa_identifier=_parse_hipaa_identifier(field_data.get("hipaa_identifier")),
-                masking_strategy=_parse_masking_strategy(field_data.get("masking_strategy")),
-                masking_params=field_data.get("masking_params", {}),
+                pii_level=pii_level,
+                pii_category=pii_category,
+                hipaa_identifier=hipaa_identifier,
+                masking_strategy=masking_strategy,
+                masking_params=masking_params,
                 description=field_data.get("description", ""),
                 enum=field_data.get("enum"),
                 default=field_data.get("default"),
