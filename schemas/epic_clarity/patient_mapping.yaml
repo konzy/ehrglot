@@ -1,0 +1,178 @@
+# Epic Clarity to FHIR R4 Patient Mapping
+# Maps Epic's PATIENT table to FHIR Patient resource
+
+source_system: epic_clarity
+source_table: PATIENT
+target_resource: Patient
+description: |
+  Maps Epic Clarity PATIENT table to FHIR R4 Patient resource.
+  Epic Clarity is the SQL Server-based reporting database for Epic EHR.
+
+source_schema:
+  database: CLARITY
+  schema: dbo
+  table: PATIENT
+
+field_mappings:
+  # Primary identifier
+  - source: PAT_ID
+    target: id
+    transform: to_string
+    description: Epic internal patient ID
+
+  # Medical Record Number (MRN)
+  - source: PAT_MRN_ID
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "urn:oid:epic:mrn"
+      identifier[0].type.coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0203"
+      identifier[0].type.coding[0].code: "MR"
+
+  # Social Security Number
+  - source: SSN
+    target: identifier[1].value
+    transform: null
+    target_context:
+      identifier[1].system: "http://hl7.org/fhir/sid/us-ssn"
+      identifier[1].type.coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0203"
+      identifier[1].type.coding[0].code: "SS"
+
+  # Name components
+  - source: PAT_FIRST_NAME
+    target: name[0].given[0]
+    transform: null
+
+  - source: PAT_MIDDLE_NAME
+    target: name[0].given[1]
+    transform: null
+    skip_if_null: true
+
+  - source: PAT_LAST_NAME
+    target: name[0].family
+    transform: null
+
+  - source: PAT_NAME_SUFFIX
+    target: name[0].suffix[0]
+    transform: null
+    skip_if_null: true
+
+  # Gender
+  - source: SEX_C
+    target: gender
+    transform: epic_sex_to_fhir_gender
+    value_mapping:
+      1: male
+      2: female
+      3: other
+      null: unknown
+
+  # Birth date
+  - source: BIRTH_DATE
+    target: birthDate
+    transform: date_to_fhir_date
+
+  # Death information
+  - source: DEATH_DATE
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  # Address
+  - source: ADD_LINE_1
+    target: address[0].line[0]
+    transform: null
+
+  - source: ADD_LINE_2
+    target: address[0].line[1]
+    transform: null
+    skip_if_null: true
+
+  - source: CITY
+    target: address[0].city
+    transform: null
+
+  - source: STATE_C
+    target: address[0].state
+    transform: epic_state_code_to_abbreviation
+    lookup_table: ZC_STATE
+
+  - source: ZIP
+    target: address[0].postalCode
+    transform: null
+
+  - source: COUNTRY_C
+    target: address[0].country
+    transform: epic_country_code_to_iso
+    lookup_table: ZC_COUNTRY
+
+  # Phone numbers
+  - source: HOME_PHONE
+    target: telecom[0].value
+    transform: normalize_phone
+    target_context:
+      telecom[0].system: phone
+      telecom[0].use: home
+    skip_if_null: true
+
+  - source: WORK_PHONE
+    target: telecom[1].value
+    transform: normalize_phone
+    target_context:
+      telecom[1].system: phone
+      telecom[1].use: work
+    skip_if_null: true
+
+  - source: CELL_PHONE
+    target: telecom[2].value
+    transform: normalize_phone
+    target_context:
+      telecom[2].system: phone
+      telecom[2].use: mobile
+    skip_if_null: true
+
+  # Email
+  - source: EMAIL_ADDRESS
+    target: telecom[3].value
+    transform: null
+    target_context:
+      telecom[3].system: email
+    skip_if_null: true
+
+  # Marital status
+  - source: MARITAL_STATUS_C
+    target: maritalStatus.coding[0].code
+    transform: epic_marital_to_fhir
+    lookup_table: ZC_MARITAL_STATUS
+    value_mapping:
+      1: M  # Married
+      2: S  # Single
+      3: D  # Divorced
+      4: W  # Widowed
+      5: A  # Annulled
+      6: L  # Legally Separated
+      7: P  # Domestic Partner
+
+  # Language
+  - source: LANGUAGE_C
+    target: communication[0].language.coding[0].code
+    transform: epic_language_to_bcp47
+    lookup_table: ZC_LANGUAGE
+
+# Required joins for lookup tables
+required_joins:
+  - table: ZC_STATE
+    join_on: PATIENT.STATE_C = ZC_STATE.STATE_C
+    fields: [ABBR, NAME]
+
+  - table: ZC_COUNTRY
+    join_on: PATIENT.COUNTRY_C = ZC_COUNTRY.COUNTRY_C
+    fields: [ABBR, NAME]
+
+  - table: ZC_MARITAL_STATUS
+    join_on: PATIENT.MARITAL_STATUS_C = ZC_MARITAL_STATUS.MARITAL_STATUS_C
+    fields: [NAME, ABBR]
+
+  - table: ZC_LANGUAGE
+    join_on: PATIENT.LANGUAGE_C = ZC_LANGUAGE.LANGUAGE_C
+    fields: [NAME, ABBR]

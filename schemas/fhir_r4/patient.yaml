@@ -1,0 +1,139 @@
+# FHIR R4 Patient Resource Schema
+# This is the canonical representation for patient demographics
+
+resource: Patient
+version: R4
+fhir_url: https://hl7.org/fhir/R4/patient.html
+description: |
+  Demographics and other administrative information about an individual
+  receiving care or other health-related services.
+
+fields:
+  # Resource identifiers
+  - name: id
+    type: string
+    required: true
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    description: Logical id of this artifact
+
+  - name: resourceType
+    type: string
+    required: true
+    default: Patient
+    description: Resource type identifier
+
+  # Patient identifiers (MRN, SSN, etc.)
+  - name: identifier
+    type: array<Identifier>
+    pii_level: CRITICAL
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: MRN
+    masking_strategy: TOKENIZE
+    description: An identifier for this patient
+
+  # Patient name
+  - name: name
+    type: array<HumanName>
+    pii_level: CRITICAL
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: NAMES
+    masking_strategy: REDACT
+    description: A name associated with the patient
+
+  # Contact information
+  - name: telecom
+    type: array<ContactPoint>
+    pii_level: CRITICAL
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: PHONE_NUMBERS
+    masking_strategy: REDACT
+    description: A contact detail for the individual
+
+  # Demographics
+  - name: gender
+    type: string
+    enum: [male, female, other, unknown]
+    pii_level: LOW
+    pii_category: QUASI_IDENTIFIER
+    description: male | female | other | unknown
+
+  - name: birthDate
+    type: date
+    pii_level: HIGH
+    pii_category: QUASI_IDENTIFIER
+    hipaa_identifier: DATES
+    masking_strategy: GENERALIZE
+    masking_params:
+      strategy: year_only
+    description: The date of birth for the individual
+
+  - name: deceasedBoolean
+    type: boolean
+    pii_level: LOW
+    description: Indicates if the individual is deceased
+
+  - name: deceasedDateTime
+    type: datetime
+    pii_level: MEDIUM
+    pii_category: QUASI_IDENTIFIER
+    hipaa_identifier: DATES
+    description: Date/time of death if deceased
+
+  # Address
+  - name: address
+    type: array<Address>
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: GEOGRAPHIC
+    masking_strategy: GENERALIZE
+    masking_params:
+      keep_fields: [state, country]
+      redact_fields: [line, city, postalCode]
+    description: An address for the individual
+
+  # Marital status
+  - name: maritalStatus
+    type: CodeableConcept
+    pii_level: LOW
+    description: Marital (civil) status of a patient
+
+  # Photos
+  - name: photo
+    type: array<Attachment>
+    pii_level: CRITICAL
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: PHOTOS
+    masking_strategy: SUPPRESS
+    description: Image of the patient
+
+  # Contact persons
+  - name: contact
+    type: array<Patient.Contact>
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    description: A contact party for the patient
+
+  # Communication preferences
+  - name: communication
+    type: array<Patient.Communication>
+    pii_level: LOW
+    description: Language preference for communication
+
+  # Care provider
+  - name: generalPractitioner
+    type: array<Reference>
+    pii_level: MEDIUM
+    description: Patient's nominated primary care provider
+
+  # Managing organization
+  - name: managingOrganization
+    type: Reference
+    pii_level: LOW
+    description: Organization that is the custodian of the patient record
+
+  # Links to other patient records
+  - name: link
+    type: array<Patient.Link>
+    pii_level: MEDIUM
+    description: Link to another patient resource

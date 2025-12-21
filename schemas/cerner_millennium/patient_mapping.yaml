@@ -1,0 +1,208 @@
+# Cerner Millennium to FHIR R4 Patient Mapping
+# Maps Cerner's PERSON table to FHIR Patient resource
+
+source_system: cerner_millennium
+source_table: PERSON
+target_resource: Patient
+description: |
+  Maps Cerner Millennium PERSON table to FHIR R4 Patient resource.
+  Cerner Millennium uses Oracle or SQL Server database backends.
+
+source_schema:
+  database: MILLENNIUM
+  schema: dbo
+  table: PERSON
+
+field_mappings:
+  # Primary identifier
+  - source: PERSON_ID
+    target: id
+    transform: to_string
+    description: Cerner internal person ID
+
+  # Medical Record Number (MRN)
+  - source: null
+    target: identifier[0].value
+    transform: null
+    source_query: |
+      SELECT PA.ALIAS
+      FROM PERSON_ALIAS PA
+      WHERE PA.PERSON_ID = PERSON.PERSON_ID
+        AND PA.PERSON_ALIAS_TYPE_CD = 10  -- MRN code
+        AND PA.ACTIVE_IND = 1
+        AND PA.END_EFFECTIVE_DT_TM > SYSDATE
+    target_context:
+      identifier[0].system: "urn:oid:cerner:mrn"
+      identifier[0].type.coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0203"
+      identifier[0].type.coding[0].code: "MR"
+
+  # Social Security Number
+  - source: null
+    target: identifier[1].value
+    transform: null
+    source_query: |
+      SELECT PA.ALIAS
+      FROM PERSON_ALIAS PA
+      WHERE PA.PERSON_ID = PERSON.PERSON_ID
+        AND PA.PERSON_ALIAS_TYPE_CD = 18  -- SSN code
+        AND PA.ACTIVE_IND = 1
+    target_context:
+      identifier[1].system: "http://hl7.org/fhir/sid/us-ssn"
+      identifier[1].type.coding[0].system: "http://terminology.hl7.org/CodeSystem/v2-0203"
+      identifier[1].type.coding[0].code: "SS"
+
+  # Name - using NAME_FULL_FORMATTED or individual components
+  - source: NAME_FIRST
+    target: name[0].given[0]
+    transform: null
+
+  - source: NAME_MIDDLE
+    target: name[0].given[1]
+    transform: null
+    skip_if_null: true
+
+  - source: NAME_LAST
+    target: name[0].family
+    transform: null
+
+  - source: NAME_SUFFIX
+    target: name[0].suffix[0]
+    transform: null
+    skip_if_null: true
+
+  - source: NAME_PREFIX
+    target: name[0].prefix[0]
+    transform: null
+    skip_if_null: true
+
+  # Gender
+  - source: SEX_CD
+    target: gender
+    transform: cerner_sex_to_fhir_gender
+    lookup_table: CODE_VALUE
+    lookup_filter: CODE_SET = 57  # Sex code set
+    value_mapping:
+      362: male      # Male
+      363: female    # Female
+      364: unknown   # Unknown
+      # Additional codes map to 'other'
+
+  # Birth date
+  - source: BIRTH_DT_TM
+    target: birthDate
+    transform: datetime_to_fhir_date
+
+  # Death information
+  - source: DECEASED_DT_TM
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: DECEASED_CD
+    target: deceasedBoolean
+    transform: cerner_deceased_to_boolean
+    lookup_table: CODE_VALUE
+    lookup_filter: CODE_SET = 268
+
+  # Address (from ADDRESS table)
+  - source: null
+    target: address[0]
+    transform: null
+    source_query: |
+      SELECT
+        A.STREET_ADDR AS line1,
+        A.STREET_ADDR2 AS line2,
+        A.CITY,
+        CV_STATE.DISPLAY AS state,
+        A.ZIPCODE AS postalCode,
+        CV_COUNTRY.DISPLAY AS country
+      FROM ADDRESS A
+      LEFT JOIN CODE_VALUE CV_STATE ON A.STATE_CD = CV_STATE.CODE_VALUE
+      LEFT JOIN CODE_VALUE CV_COUNTRY ON A.COUNTRY_CD = CV_COUNTRY.CODE_VALUE
+      WHERE A.PARENT_ENTITY_ID = PERSON.PERSON_ID
+        AND A.PARENT_ENTITY_NAME = 'PERSON'
+        AND A.ACTIVE_IND = 1
+        AND A.ADDRESS_TYPE_CD = 756  -- Home address
+        AND A.END_EFFECTIVE_DT_TM > SYSDATE
+      ORDER BY A.BEG_EFFECTIVE_DT_TM DESC
+      FETCH FIRST 1 ROW ONLY
+
+  # Phone numbers (from PHONE table)
+  - source: null
+    target: telecom
+    transform: null
+    source_query: |
+      SELECT
+        P.PHONE_NUM AS value,
+        CASE P.PHONE_TYPE_CD
+          WHEN 170 THEN 'home'
+          WHEN 163 THEN 'work'
+          WHEN 164 THEN 'mobile'
+          ELSE 'temp'
+        END AS use
+      FROM PHONE P
+      WHERE P.PARENT_ENTITY_ID = PERSON.PERSON_ID
+        AND P.PARENT_ENTITY_NAME = 'PERSON'
+        AND P.ACTIVE_IND = 1
+        AND P.END_EFFECTIVE_DT_TM > SYSDATE
+
+  # Marital status
+  - source: MARITAL_TYPE_CD
+    target: maritalStatus.coding[0].code
+    transform: cerner_marital_to_fhir
+    lookup_table: CODE_VALUE
+    lookup_filter: CODE_SET = 38
+    value_mapping:
+      # Cerner CODE_VALUE meanings vary by installation
+      # These are common defaults
+      default: UNK
+
+  # Language
+  - source: LANGUAGE_CD
+    target: communication[0].language.coding[0].code
+    transform: cerner_language_to_bcp47
+    lookup_table: CODE_VALUE
+    lookup_filter: CODE_SET = 36
+
+  # Ethnicity (extension)
+  - source: ETHNIC_GRP_CD
+    target: extension[0]
+    transform: cerner_ethnicity_to_fhir_extension
+    lookup_table: CODE_VALUE
+    lookup_filter: CODE_SET = 27
+    target_context:
+      extension[0].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+
+  # Race (extension)
+  - source: RACE_CD
+    target: extension[1]
+    transform: cerner_race_to_fhir_extension
+    lookup_table: CODE_VALUE
+    lookup_filter: CODE_SET = 36
+    target_context:
+      extension[1].url: "http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+
+# Required joins for code value lookups
+required_joins:
+  - table: CODE_VALUE
+    alias: CV_SEX
+    join_on: PERSON.SEX_CD = CV_SEX.CODE_VALUE
+    fields: [DISPLAY, DESCRIPTION, CDF_MEANING]
+
+  - table: CODE_VALUE
+    alias: CV_MARITAL
+    join_on: PERSON.MARITAL_TYPE_CD = CV_MARITAL.CODE_VALUE
+    fields: [DISPLAY, DESCRIPTION, CDF_MEANING]
+
+  - table: CODE_VALUE
+    alias: CV_LANGUAGE
+    join_on: PERSON.LANGUAGE_CD = CV_LANGUAGE.CODE_VALUE
+    fields: [DISPLAY, DESCRIPTION, CDF_MEANING]
+
+# Notes on Cerner data model
+notes: |
+  - Cerner uses CODE_VALUE table with CODE_SET to define enumerated values
+  - Person aliases (MRN, SSN, etc.) are in PERSON_ALIAS table
+  - Addresses are in ADDRESS table with PARENT_ENTITY relationship
+  - Phone numbers are in PHONE table with PARENT_ENTITY relationship
+  - Dates use DT_TM suffix and are stored as Oracle DATE or SQL Server DATETIME

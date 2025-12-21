@@ -1,0 +1,191 @@
+# FHIR R4 Observation Resource Schema
+# Clinical observations and measurements
+
+resource: Observation
+version: R4
+fhir_url: https://hl7.org/fhir/R4/observation.html
+description: |
+  Measurements and simple assertions made about a patient, device or other subject.
+  Includes vital signs, lab results, and clinical findings.
+
+fields:
+  - name: id
+    type: string
+    required: true
+    pii_level: MEDIUM
+    description: Logical id of this artifact
+
+  - name: resourceType
+    type: string
+    required: true
+    default: Observation
+    description: Resource type identifier
+
+  # Identifiers
+  - name: identifier
+    type: array<Identifier>
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    description: Business identifier for observation
+
+  # Status
+  - name: status
+    type: string
+    required: true
+    enum: [registered, preliminary, final, amended, corrected, cancelled, entered-in-error, unknown]
+    pii_level: NONE
+    description: registered | preliminary | final | amended +
+
+  # Category
+  - name: category
+    type: array<CodeableConcept>
+    pii_level: NONE
+    description: Classification of type of observation
+
+  # Code (what was observed)
+  - name: code
+    type: CodeableConcept
+    required: true
+    pii_level: MEDIUM
+    pii_category: SENSITIVE_DATA
+    description: Type of observation (code/type)
+
+  # Subject (patient)
+  - name: subject
+    type: Reference
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    description: Who/what this is about
+
+  # Encounter context
+  - name: encounter
+    type: Reference
+    pii_level: MEDIUM
+    description: Healthcare event during which observation was made
+
+  # Effective date/time
+  - name: effectiveDateTime
+    type: datetime
+    pii_level: MEDIUM
+    pii_category: QUASI_IDENTIFIER
+    hipaa_identifier: DATES
+    masking_strategy: GENERALIZE
+    masking_params:
+      precision: day
+    description: Clinically relevant time for observation
+
+  - name: effectivePeriod
+    type: Period
+    pii_level: MEDIUM
+    pii_category: QUASI_IDENTIFIER
+    description: Clinically relevant time period
+
+  # Issued timestamp
+  - name: issued
+    type: datetime
+    pii_level: LOW
+    description: Date/time observation was made available
+
+  # Performer
+  - name: performer
+    type: array<Reference>
+    pii_level: MEDIUM
+    description: Who is responsible for the observation
+
+  # Value (the actual result)
+  - name: valueQuantity
+    type: Quantity
+    pii_level: MEDIUM
+    pii_category: SENSITIVE_DATA
+    description: Actual result (Quantity)
+
+  - name: valueCodeableConcept
+    type: CodeableConcept
+    pii_level: MEDIUM
+    pii_category: SENSITIVE_DATA
+    description: Actual result (CodeableConcept)
+
+  - name: valueString
+    type: string
+    pii_level: MEDIUM
+    pii_category: SENSITIVE_DATA
+    description: Actual result (string)
+
+  - name: valueBoolean
+    type: boolean
+    pii_level: LOW
+    description: Actual result (boolean)
+
+  - name: valueInteger
+    type: integer
+    pii_level: LOW
+    description: Actual result (integer)
+
+  - name: valueRange
+    type: Range
+    pii_level: MEDIUM
+    description: Actual result (Range)
+
+  - name: valueRatio
+    type: Ratio
+    pii_level: MEDIUM
+    description: Actual result (Ratio)
+
+  # Data absent reason
+  - name: dataAbsentReason
+    type: CodeableConcept
+    pii_level: NONE
+    description: Why result is missing
+
+  # Interpretation
+  - name: interpretation
+    type: array<CodeableConcept>
+    pii_level: LOW
+    pii_category: SENSITIVE_DATA
+    description: High, low, normal, etc.
+
+  # Notes
+  - name: note
+    type: array<Annotation>
+    pii_level: HIGH
+    pii_category: SENSITIVE_DATA
+    masking_strategy: REDACT
+    description: Comments about observation
+
+  # Body site
+  - name: bodySite
+    type: CodeableConcept
+    pii_level: LOW
+    description: Observed body part
+
+  # Method
+  - name: method
+    type: CodeableConcept
+    pii_level: NONE
+    description: How it was done
+
+  # Specimen
+  - name: specimen
+    type: Reference
+    pii_level: LOW
+    description: Specimen used for this observation
+
+  # Device
+  - name: device
+    type: Reference
+    pii_level: LOW
+    hipaa_identifier: DEVICE_IDENTIFIERS
+    description: Device used to produce observation
+
+  # Reference ranges
+  - name: referenceRange
+    type: array<Observation.ReferenceRange>
+    pii_level: NONE
+    description: Provides guide for interpretation
+
+  # Component observations
+  - name: component
+    type: array<Observation.Component>
+    pii_level: MEDIUM
+    pii_category: SENSITIVE_DATA
+    description: Component results

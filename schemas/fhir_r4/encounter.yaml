@@ -1,0 +1,174 @@
+# FHIR R4 Encounter Resource Schema
+# Healthcare encounters and visits
+
+resource: Encounter
+version: R4
+fhir_url: https://hl7.org/fhir/R4/encounter.html
+description: |
+  An interaction between a patient and healthcare provider(s) for the purpose
+  of providing healthcare service(s) or assessing health status.
+
+fields:
+  - name: id
+    type: string
+    required: true
+    pii_level: MEDIUM
+    description: Logical id of this artifact
+
+  - name: resourceType
+    type: string
+    required: true
+    default: Encounter
+    description: Resource type identifier
+
+  # Identifiers
+  - name: identifier
+    type: array<Identifier>
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: ACCOUNT_NUMBERS
+    description: Identifier(s) by which this encounter is known
+
+  # Status
+  - name: status
+    type: string
+    required: true
+    enum: [planned, arrived, triaged, in-progress, onleave, finished, cancelled, entered-in-error, unknown]
+    pii_level: NONE
+    description: Current state of the encounter
+
+  # Status history
+  - name: statusHistory
+    type: array<Encounter.StatusHistory>
+    pii_level: LOW
+    description: List of past encounter statuses
+
+  # Class (inpatient, outpatient, etc.)
+  - name: class
+    type: Coding
+    required: true
+    pii_level: LOW
+    description: Classification of patient encounter
+
+  # Class history
+  - name: classHistory
+    type: array<Encounter.ClassHistory>
+    pii_level: LOW
+    description: List of past encounter classes
+
+  # Type
+  - name: type
+    type: array<CodeableConcept>
+    pii_level: LOW
+    pii_category: SENSITIVE_DATA
+    description: Specific type of encounter
+
+  # Service type
+  - name: serviceType
+    type: CodeableConcept
+    pii_level: LOW
+    description: Specific type of service
+
+  # Priority
+  - name: priority
+    type: CodeableConcept
+    pii_level: NONE
+    description: Indicates urgency of encounter
+
+  # Subject (patient)
+  - name: subject
+    type: Reference
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    description: The patient or group present at the encounter
+
+  # Episode of care
+  - name: episodeOfCare
+    type: array<Reference>
+    pii_level: MEDIUM
+    description: Episode(s) of care this encounter is part of
+
+  # Based on (service request)
+  - name: basedOn
+    type: array<Reference>
+    pii_level: LOW
+    description: The ServiceRequest that initiated this encounter
+
+  # Participants
+  - name: participant
+    type: array<Encounter.Participant>
+    pii_level: MEDIUM
+    description: List of participants involved in the encounter
+
+  # Appointment
+  - name: appointment
+    type: array<Reference>
+    pii_level: MEDIUM
+    description: The appointment that scheduled this encounter
+
+  # Period
+  - name: period
+    type: Period
+    pii_level: MEDIUM
+    pii_category: QUASI_IDENTIFIER
+    hipaa_identifier: DATES
+    description: The start and end time of the encounter
+
+  # Length
+  - name: length
+    type: Duration
+    pii_level: LOW
+    description: Quantity of time the encounter lasted
+
+  # Reason
+  - name: reasonCode
+    type: array<CodeableConcept>
+    pii_level: HIGH
+    pii_category: SENSITIVE_DATA
+    description: Coded reason the encounter takes place
+
+  - name: reasonReference
+    type: array<Reference>
+    pii_level: HIGH
+    pii_category: SENSITIVE_DATA
+    description: Reason the encounter takes place (reference)
+
+  # Diagnosis
+  - name: diagnosis
+    type: array<Encounter.Diagnosis>
+    pii_level: HIGH
+    pii_category: SENSITIVE_DATA
+    description: The list of diagnosis relevant to this encounter
+
+  # Account
+  - name: account
+    type: array<Reference>
+    pii_level: HIGH
+    pii_category: DIRECT_IDENTIFIER
+    hipaa_identifier: ACCOUNT_NUMBERS
+    description: The set of accounts for billing
+
+  # Hospitalization
+  - name: hospitalization
+    type: Encounter.Hospitalization
+    pii_level: MEDIUM
+    description: Details about the admission to a healthcare service
+
+  # Location
+  - name: location
+    type: array<Encounter.Location>
+    pii_level: MEDIUM
+    pii_category: QUASI_IDENTIFIER
+    description: List of locations where the patient has been
+
+  # Service provider
+  - name: serviceProvider
+    type: Reference
+    pii_level: LOW
+    description: The organization responsible for this encounter
+
+  # Part of (parent encounter)
+  - name: partOf
+    type: Reference
+    pii_level: LOW
+    description: Another encounter this encounter is part of
