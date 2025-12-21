@@ -1,0 +1,133 @@
+# Meditech Expanse/MAGIC to FHIR R4 Patient Mapping
+# Source: Meditech Data Repository (MDR)
+
+source_system: meditech
+source_table: MRI.DPT.PAT
+target_resource: Patient
+description: Maps Meditech patient demographics to FHIR R4 Patient
+
+source_query: |
+  SELECT
+    p.URN AS PatientID,
+    p.ACCOUNT_NUMBER AS MRN,
+    p.FIRST_NAME,
+    p.MIDDLE_NAME,
+    p.LAST_NAME,
+    p.SUFFIX,
+    p.DOB AS DateOfBirth,
+    p.SEX AS Gender,
+    p.SSN,
+    p.STREET_ADDRESS_1,
+    p.STREET_ADDRESS_2,
+    p.CITY,
+    p.STATE_CODE,
+    p.ZIP_CODE,
+    p.HOME_PHONE,
+    p.WORK_PHONE,
+    p.CELL_PHONE,
+    p.EMAIL_ADDRESS,
+    p.MARITAL_STATUS_CODE,
+    p.LANGUAGE_CODE,
+    p.RACE_CODE,
+    p.ETHNIC_CODE,
+    p.DEATH_INDICATOR,
+    p.DEATH_DATE
+  FROM MRI.DPT.PAT p
+  WHERE p.ACTIVE_IND = 'Y'
+
+field_mappings:
+  - source: PatientID
+    target: id
+    transform: to_string
+
+  - source: MRN
+    target: identifier[0].value
+
+  - target: identifier[0].system
+    default: "urn:meditech:mrn"
+
+  - source: SSN
+    target: identifier[1].value
+    transform: format_ssn
+
+  - source: FIRST_NAME
+    target: name[0].given[0]
+
+  - source: MIDDLE_NAME
+    target: name[0].given[1]
+
+  - source: LAST_NAME
+    target: name[0].family
+
+  - source: SUFFIX
+    target: name[0].suffix[0]
+
+  - target: name[0].use
+    default: "official"
+
+  - source: DateOfBirth
+    target: birthDate
+    transform: date_to_fhir_date
+
+  - source: Gender
+    target: gender
+    transform: meditech_sex_to_fhir_gender
+
+  - source: STREET_ADDRESS_1
+    target: address[0].line[0]
+
+  - source: STREET_ADDRESS_2
+    target: address[0].line[1]
+
+  - source: CITY
+    target: address[0].city
+
+  - source: STATE_CODE
+    target: address[0].state
+
+  - source: ZIP_CODE
+    target: address[0].postalCode
+
+  - source: HOME_PHONE
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - target: telecom[0].system
+    default: "phone"
+
+  - target: telecom[0].use
+    default: "home"
+
+  - source: CELL_PHONE
+    target: telecom[1].value
+    transform: normalize_phone
+
+  - target: telecom[1].system
+    default: "phone"
+
+  - target: telecom[1].use
+    default: "mobile"
+
+  - source: EMAIL_ADDRESS
+    target: telecom[2].value
+
+  - target: telecom[2].system
+    default: "email"
+
+  - source: DEATH_INDICATOR
+    target: deceasedBoolean
+    transform: meditech_yn_to_boolean
+
+  - source: DEATH_DATE
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+
+value_mappings:
+  meditech_sex_to_fhir_gender:
+    M: male
+    F: female
+    U: unknown
+
+  meditech_yn_to_boolean:
+    Y: true
+    N: false

@@ -1,0 +1,132 @@
+# Allscripts TouchWorks/Professional to FHIR R4 Patient Mapping
+# Source: Allscripts TouchWorks EHR database
+
+source_system: allscripts
+source_table: PATIENT
+target_resource: Patient
+description: Maps Allscripts patient demographics to FHIR R4 Patient
+
+source_query: |
+  SELECT
+    p.PatientID,
+    p.MRN,
+    p.FirstName,
+    p.MiddleName,
+    p.LastName,
+    p.DateOfBirth,
+    p.Gender,
+    p.SSN,
+    p.Address1,
+    p.Address2,
+    p.City,
+    p.State,
+    p.ZipCode,
+    p.HomePhone,
+    p.WorkPhone,
+    p.CellPhone,
+    p.Email,
+    p.MaritalStatus,
+    p.Language,
+    p.Race,
+    p.Ethnicity,
+    p.DeceasedFlag,
+    p.DeceasedDate
+  FROM PATIENT p
+  WHERE p.ActiveFlag = 1
+
+field_mappings:
+  - source: PatientID
+    target: id
+    transform: to_string
+
+  - source: MRN
+    target: identifier[0].value
+
+  - target: identifier[0].system
+    default: "urn:allscripts:mrn"
+
+  - target: identifier[0].type.coding[0].code
+    default: "MR"
+
+  - source: SSN
+    target: identifier[1].value
+    transform: format_ssn
+
+  - target: identifier[1].system
+    default: "http://hl7.org/fhir/sid/us-ssn"
+
+  - source: FirstName
+    target: name[0].given[0]
+
+  - source: MiddleName
+    target: name[0].given[1]
+
+  - source: LastName
+    target: name[0].family
+
+  - target: name[0].use
+    default: "official"
+
+  - source: DateOfBirth
+    target: birthDate
+    transform: date_to_fhir_date
+
+  - source: Gender
+    target: gender
+    transform: allscripts_gender_to_fhir
+
+  - source: Address1
+    target: address[0].line[0]
+
+  - source: Address2
+    target: address[0].line[1]
+
+  - source: City
+    target: address[0].city
+
+  - source: State
+    target: address[0].state
+
+  - source: ZipCode
+    target: address[0].postalCode
+
+  - target: address[0].use
+    default: "home"
+
+  - source: HomePhone
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - target: telecom[0].system
+    default: "phone"
+
+  - target: telecom[0].use
+    default: "home"
+
+  - source: CellPhone
+    target: telecom[1].value
+    transform: normalize_phone
+
+  - target: telecom[1].system
+    default: "phone"
+
+  - target: telecom[1].use
+    default: "mobile"
+
+  - source: Email
+    target: telecom[2].value
+
+  - target: telecom[2].system
+    default: "email"
+
+  - source: MaritalStatus
+    target: maritalStatus.coding[0].code
+    transform: allscripts_marital_to_fhir
+
+  - source: DeceasedFlag
+    target: deceasedBoolean
+    transform: to_boolean
+
+  - source: DeceasedDate
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime

@@ -1,0 +1,131 @@
+# FHIR R4 Procedure Resource Schema
+# https://www.hl7.org/fhir/R4/procedure.html
+
+resource: Procedure
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/procedure.html
+description: Action performed on or for a patient
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+    pii_level: low
+
+  - name: identifier
+    type: array<Identifier>
+    description: External identifiers for this procedure
+
+  - name: status
+    type: code
+    required: true
+    enum: [preparation, in-progress, not-done, on-hold, stopped, completed, entered-in-error, unknown]
+    description: Current state of the procedure
+
+  - name: statusReason
+    type: CodeableConcept
+    description: Reason for current status
+
+  - name: category
+    type: CodeableConcept
+    description: Classification of the procedure
+
+  - name: code
+    type: CodeableConcept
+    description: Identification of the procedure (CPT, SNOMED)
+
+  - name: subject
+    type: Reference
+    required: true
+    description: Who the procedure was performed on
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Encounter created as part of
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: performedDateTime
+    type: dateTime
+    description: When the procedure was performed
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: month
+
+  - name: performedPeriod
+    type: Period
+    description: Period of procedure performance
+
+  - name: recorder
+    type: Reference
+    description: Who recorded the procedure
+
+  - name: asserter
+    type: Reference
+    description: Person who asserts this procedure
+
+  - name: performer
+    type: array<BackboneElement>
+    description: The people who performed the procedure
+
+  - name: location
+    type: Reference
+    description: Where the procedure happened
+    pii_level: low
+    pii_category: geographic
+    hipaa_identifier: geographic_data
+
+  - name: reasonCode
+    type: array<CodeableConcept>
+    description: Coded reason procedure performed
+
+  - name: reasonReference
+    type: array<Reference>
+    description: Justification for procedure
+
+  - name: bodySite
+    type: array<CodeableConcept>
+    description: Target body sites
+
+  - name: outcome
+    type: CodeableConcept
+    description: The result of procedure
+
+  - name: report
+    type: array<Reference>
+    description: Procedure report
+
+  - name: complication
+    type: array<CodeableConcept>
+    description: Complications during procedure
+
+  - name: followUp
+    type: array<CodeableConcept>
+    description: Instructions for follow up
+
+  - name: note
+    type: array<Annotation>
+    description: Additional procedure info
+    pii_level: high
+    pii_category: clinical
+    masking_strategy: redact
+
+  - name: focalDevice
+    type: array<BackboneElement>
+    description: Manipulated, implanted, or removed device
+
+  - name: usedReference
+    type: array<Reference>
+    description: Items used during procedure
+
+  - name: usedCode
+    type: array<CodeableConcept>
+    description: Coded items used during procedure

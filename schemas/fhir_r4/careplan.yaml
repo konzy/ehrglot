@@ -1,0 +1,99 @@
+# FHIR R4 CarePlan Resource Schema
+# https://www.hl7.org/fhir/R4/careplan.html
+
+resource: CarePlan
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/careplan.html
+description: Healthcare plan for patient
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+
+  - name: identifier
+    type: array<Identifier>
+    description: External identifiers
+
+  - name: status
+    type: code
+    required: true
+    enum: [draft, active, on-hold, revoked, completed, entered-in-error, unknown]
+    description: Plan status
+
+  - name: intent
+    type: code
+    required: true
+    enum: [proposal, plan, order, option]
+    description: Plan intent
+
+  - name: category
+    type: array<CodeableConcept>
+    description: Type of plan
+
+  - name: title
+    type: string
+    description: Human-friendly name
+
+  - name: description
+    type: string
+    description: Summary of plan
+    pii_level: medium
+    pii_category: clinical
+
+  - name: subject
+    type: Reference
+    required: true
+    description: Who care plan is for
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Encounter created as part of
+    pii_level: medium
+
+  - name: period
+    type: Period
+    description: Time period plan covers
+    pii_level: medium
+    pii_category: temporal
+
+  - name: created
+    type: dateTime
+    description: Date record was created
+    pii_level: low
+
+  - name: author
+    type: Reference
+    description: Who is responsible for contents
+
+  - name: contributor
+    type: array<Reference>
+    description: Who contributed to the plan
+
+  - name: careTeam
+    type: array<Reference>
+    description: Who's involved in plan
+
+  - name: addresses
+    type: array<Reference>
+    description: Health issues addressed
+
+  - name: goal
+    type: array<Reference>
+    description: Desired outcome of plan
+
+  - name: activity
+    type: array<BackboneElement>
+    description: Action to occur as part of plan
+
+  - name: note
+    type: array<Annotation>
+    description: Comments about plan
+    pii_level: high
+    pii_category: clinical
+    masking_strategy: redact

@@ -1,0 +1,148 @@
+# eClinicalWorks to FHIR R4 Patient Mapping
+# Source: eClinicalWorks MySQL database
+
+source_system: eclinicalworks
+source_table: patients
+target_resource: Patient
+description: Maps eClinicalWorks patient demographics to FHIR R4 Patient
+
+source_query: |
+  SELECT
+    p.patientId,
+    p.accountNumber AS MRN,
+    p.firstName,
+    p.middleName,
+    p.lastName,
+    p.suffix,
+    p.dateOfBirth,
+    p.gender,
+    p.ssn,
+    p.address1,
+    p.address2,
+    p.city,
+    p.state,
+    p.zipCode,
+    p.homePhone,
+    p.cellPhone,
+    p.workPhone,
+    p.email,
+    p.maritalStatus,
+    p.preferredLanguage,
+    p.race,
+    p.ethnicity,
+    p.deceased,
+    p.dateOfDeath,
+    p.isActive
+  FROM patients p
+  WHERE p.isActive = 1
+
+field_mappings:
+  - source: patientId
+    target: id
+    transform: to_string
+
+  - source: MRN
+    target: identifier[0].value
+
+  - target: identifier[0].system
+    default: "urn:ecw:mrn"
+
+  - source: ssn
+    target: identifier[1].value
+    transform: format_ssn
+
+  - target: identifier[1].system
+    default: "http://hl7.org/fhir/sid/us-ssn"
+
+  - source: firstName
+    target: name[0].given[0]
+
+  - source: middleName
+    target: name[0].given[1]
+
+  - source: lastName
+    target: name[0].family
+
+  - source: suffix
+    target: name[0].suffix[0]
+
+  - target: name[0].use
+    default: "official"
+
+  - source: dateOfBirth
+    target: birthDate
+    transform: date_to_fhir_date
+
+  - source: gender
+    target: gender
+    transform: ecw_gender_to_fhir
+
+  - source: address1
+    target: address[0].line[0]
+
+  - source: address2
+    target: address[0].line[1]
+
+  - source: city
+    target: address[0].city
+
+  - source: state
+    target: address[0].state
+
+  - source: zipCode
+    target: address[0].postalCode
+
+  - source: homePhone
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - target: telecom[0].system
+    default: "phone"
+
+  - target: telecom[0].use
+    default: "home"
+
+  - source: cellPhone
+    target: telecom[1].value
+    transform: normalize_phone
+
+  - target: telecom[1].system
+    default: "phone"
+
+  - target: telecom[1].use
+    default: "mobile"
+
+  - source: email
+    target: telecom[2].value
+
+  - target: telecom[2].system
+    default: "email"
+
+  - source: maritalStatus
+    target: maritalStatus.coding[0].code
+    transform: ecw_marital_to_fhir
+
+  - source: deceased
+    target: deceasedBoolean
+    transform: to_boolean
+
+  - source: dateOfDeath
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+
+value_mappings:
+  ecw_gender_to_fhir:
+    Male: male
+    Female: female
+    Other: other
+    Unknown: unknown
+    M: male
+    F: female
+
+  ecw_marital_to_fhir:
+    Single: S
+    Married: M
+    Divorced: D
+    Widowed: W
+    Separated: L
+    Partner: T

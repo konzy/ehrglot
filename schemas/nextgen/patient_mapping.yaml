@@ -1,0 +1,135 @@
+# NextGen Healthcare to FHIR R4 Patient Mapping
+# Source: NextGen Ambulatory / NextGen Enterprise database
+
+source_system: nextgen
+source_table: patient_master
+target_resource: Patient
+description: Maps NextGen patient demographics to FHIR R4 Patient
+
+source_query: |
+  SELECT
+    pm.person_id,
+    pm.med_rec_nbr AS MRN,
+    pm.first_name,
+    pm.middle_name,
+    pm.last_name,
+    pm.suffix_name,
+    pm.date_of_birth,
+    pm.sex,
+    pm.ssn,
+    pa.address_line_1,
+    pa.address_line_2,
+    pa.city,
+    pa.state,
+    pa.zip,
+    pp.phone_number AS home_phone,
+    pm.cell_phone,
+    pm.email_address,
+    pm.marital_status,
+    pm.language_code,
+    pm.race_code,
+    pm.ethnicity_code,
+    pm.deceased_ind,
+    pm.date_of_death
+  FROM patient_master pm
+  LEFT JOIN person_address pa ON pm.person_id = pa.person_id AND pa.address_type = 'H'
+  LEFT JOIN person_phone pp ON pm.person_id = pp.person_id AND pp.phone_type = 'H'
+  WHERE pm.delete_ind = 'N'
+
+field_mappings:
+  - source: person_id
+    target: id
+    transform: to_string
+
+  - source: MRN
+    target: identifier[0].value
+
+  - target: identifier[0].system
+    default: "urn:nextgen:mrn"
+
+  - source: ssn
+    target: identifier[1].value
+    transform: format_ssn
+
+  - source: first_name
+    target: name[0].given[0]
+
+  - source: middle_name
+    target: name[0].given[1]
+
+  - source: last_name
+    target: name[0].family
+
+  - source: suffix_name
+    target: name[0].suffix[0]
+
+  - target: name[0].use
+    default: "official"
+
+  - source: date_of_birth
+    target: birthDate
+    transform: date_to_fhir_date
+
+  - source: sex
+    target: gender
+    transform: nextgen_sex_to_fhir_gender
+
+  - source: address_line_1
+    target: address[0].line[0]
+
+  - source: address_line_2
+    target: address[0].line[1]
+
+  - source: city
+    target: address[0].city
+
+  - source: state
+    target: address[0].state
+
+  - source: zip
+    target: address[0].postalCode
+
+  - source: home_phone
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - target: telecom[0].system
+    default: "phone"
+
+  - target: telecom[0].use
+    default: "home"
+
+  - source: cell_phone
+    target: telecom[1].value
+    transform: normalize_phone
+
+  - target: telecom[1].system
+    default: "phone"
+
+  - target: telecom[1].use
+    default: "mobile"
+
+  - source: email_address
+    target: telecom[2].value
+
+  - target: telecom[2].system
+    default: "email"
+
+  - source: deceased_ind
+    target: deceasedBoolean
+    transform: nextgen_yn_to_boolean
+
+  - source: date_of_death
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+
+value_mappings:
+  nextgen_sex_to_fhir_gender:
+    M: male
+    F: female
+    U: unknown
+    O: other
+
+  nextgen_yn_to_boolean:
+    Y: true
+    N: false

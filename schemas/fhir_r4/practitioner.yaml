@@ -1,0 +1,85 @@
+# FHIR R4 Practitioner Resource Schema
+# https://www.hl7.org/fhir/R4/practitioner.html
+
+resource: Practitioner
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/practitioner.html
+description: Person with formal healthcare responsibility
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+
+  - name: identifier
+    type: array<Identifier>
+    description: Identifiers (NPI, DEA, etc.)
+    pii_level: medium
+    pii_category: quasi_identifier
+    hipaa_identifier: device_identifiers
+
+  - name: active
+    type: boolean
+    description: Whether record is in active use
+
+  - name: name
+    type: array<HumanName>
+    description: Name of practitioner
+    pii_level: medium
+    pii_category: direct_identifier
+    hipaa_identifier: names
+    masking_strategy: partial
+    masking_params:
+      show_last: 1
+
+  - name: telecom
+    type: array<ContactPoint>
+    description: Contact details
+    pii_level: medium
+    pii_category: contact
+    hipaa_identifier: phone_numbers
+    masking_strategy: partial
+    masking_params:
+      show_last: 4
+
+  - name: address
+    type: array<Address>
+    description: Address for practitioner
+    pii_level: medium
+    pii_category: geographic
+    hipaa_identifier: geographic_data
+    masking_strategy: generalize
+    masking_params:
+      keep_state: true
+
+  - name: gender
+    type: code
+    enum: [male, female, other, unknown]
+    description: Administrative gender
+
+  - name: birthDate
+    type: date
+    description: Birth date
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: year
+
+  - name: photo
+    type: array<Attachment>
+    description: Image of the person
+    pii_level: critical
+    pii_category: biometric
+    hipaa_identifier: photos
+    masking_strategy: suppress
+
+  - name: qualification
+    type: array<BackboneElement>
+    description: Certification, licenses, training
+
+  - name: communication
+    type: array<CodeableConcept>
+    description: Languages practitioner can use

@@ -1,0 +1,111 @@
+# FHIR R4 Condition Resource Schema
+# https://www.hl7.org/fhir/R4/condition.html
+
+resource: Condition
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/condition.html
+description: Detailed information about a condition, problem, or diagnosis
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+    pii_level: low
+    pii_category: quasi_identifier
+
+  - name: identifier
+    type: array<Identifier>
+    description: External Ids for this condition
+
+  - name: clinicalStatus
+    type: CodeableConcept
+    description: active, recurrence, relapse, inactive, remission, resolved
+
+  - name: verificationStatus
+    type: CodeableConcept
+    description: unconfirmed, provisional, differential, confirmed, refuted, entered-in-error
+
+  - name: category
+    type: array<CodeableConcept>
+    description: Problem list item, encounter diagnosis, etc.
+
+  - name: severity
+    type: CodeableConcept
+    description: Subjective severity of condition
+
+  - name: code
+    type: CodeableConcept
+    description: Identification of the condition (ICD-10, SNOMED)
+
+  - name: bodySite
+    type: array<CodeableConcept>
+    description: Anatomical location if relevant
+
+  - name: subject
+    type: Reference
+    required: true
+    description: Who has the condition
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Encounter when condition was asserted
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: onsetDateTime
+    type: dateTime
+    description: Estimated or actual onset date
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: month
+
+  - name: onsetAge
+    type: Age
+    description: Onset age
+
+  - name: onsetPeriod
+    type: Period
+    description: Onset period
+
+  - name: abatementDateTime
+    type: dateTime
+    description: When condition resolved
+    pii_level: medium
+    pii_category: temporal
+
+  - name: recordedDate
+    type: dateTime
+    description: Date record was first recorded
+    pii_level: medium
+    pii_category: temporal
+
+  - name: recorder
+    type: Reference
+    description: Who recorded the condition
+
+  - name: asserter
+    type: Reference
+    description: Person who asserts this condition
+
+  - name: stage
+    type: array<BackboneElement>
+    description: Stage/grade for condition
+
+  - name: evidence
+    type: array<BackboneElement>
+    description: Supporting evidence
+
+  - name: note
+    type: array<Annotation>
+    description: Additional information about condition
+    pii_level: high
+    pii_category: clinical
+    masking_strategy: redact

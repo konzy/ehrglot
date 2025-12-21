@@ -1,0 +1,111 @@
+# FHIR R4 MedicationRequest Resource Schema
+# https://www.hl7.org/fhir/R4/medicationrequest.html
+
+resource: MedicationRequest
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/medicationrequest.html
+description: Ordering of medication for patient or group
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+    pii_level: low
+    pii_category: quasi_identifier
+
+  - name: identifier
+    type: array<Identifier>
+    description: External ids for this request
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: status
+    type: code
+    required: true
+    enum: [active, on-hold, cancelled, completed, entered-in-error, stopped, draft, unknown]
+    description: Status of the prescription
+
+  - name: statusReason
+    type: CodeableConcept
+    description: Reason for current status
+
+  - name: intent
+    type: code
+    required: true
+    enum: [proposal, plan, order, original-order, reflex-order, filler-order, instance-order, option]
+    description: Proposal, plan, order, etc.
+
+  - name: category
+    type: array<CodeableConcept>
+    description: Type of medication usage
+
+  - name: priority
+    type: code
+    enum: [routine, urgent, asap, stat]
+    description: Urgency of request
+
+  - name: medicationCodeableConcept
+    type: CodeableConcept
+    description: Medication to be taken
+
+  - name: medicationReference
+    type: Reference
+    description: Reference to medication resource
+
+  - name: subject
+    type: Reference
+    required: true
+    description: Who the medication is for
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Encounter created as part of
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: authoredOn
+    type: dateTime
+    description: When request was initially authored
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: month
+
+  - name: requester
+    type: Reference
+    description: Who/What requested the medication
+    pii_level: low
+
+  - name: performer
+    type: Reference
+    description: Intended performer of administration
+
+  - name: reasonCode
+    type: array<CodeableConcept>
+    description: Reason for ordering medication
+
+  - name: note
+    type: array<Annotation>
+    description: Information about the prescription
+    pii_level: high
+    pii_category: clinical
+    masking_strategy: redact
+
+  - name: dosageInstruction
+    type: array<Dosage>
+    description: How the medication should be taken
+
+  - name: dispenseRequest
+    type: BackboneElement
+    description: Medication supply authorization
+
+  - name: substitution
+    type: BackboneElement
+    description: Any restrictions on medication substitution

@@ -1,0 +1,101 @@
+# FHIR R4 Coverage Resource Schema
+# https://www.hl7.org/fhir/R4/coverage.html
+
+resource: Coverage
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/coverage.html
+description: Insurance or medical plan or payment agreement
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+
+  - name: identifier
+    type: array<Identifier>
+    description: Business identifier for coverage
+    pii_level: critical
+    pii_category: financial
+    hipaa_identifier: account_numbers
+    masking_strategy: partial
+    masking_params:
+      show_last: 4
+
+  - name: status
+    type: code
+    required: true
+    enum: [active, cancelled, draft, entered-in-error]
+    description: Coverage status
+
+  - name: type
+    type: CodeableConcept
+    description: Coverage category (medical, dental, etc.)
+
+  - name: policyHolder
+    type: Reference
+    description: Owner of the policy
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: subscriber
+    type: Reference
+    description: Subscriber to the policy
+    pii_level: high
+    pii_category: direct_identifier
+
+  - name: subscriberId
+    type: string
+    description: ID assigned to the subscriber
+    pii_level: critical
+    pii_category: financial
+    hipaa_identifier: account_numbers
+    masking_strategy: partial
+    masking_params:
+      show_last: 4
+
+  - name: beneficiary
+    type: Reference
+    required: true
+    description: Plan beneficiary
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: dependent
+    type: string
+    description: Dependent number
+    pii_level: medium
+
+  - name: relationship
+    type: CodeableConcept
+    description: Beneficiary relationship to subscriber
+
+  - name: period
+    type: Period
+    description: Coverage start and end dates
+    pii_level: medium
+
+  - name: payor
+    type: array<Reference>
+    required: true
+    description: Issuer of the policy
+
+  - name: class
+    type: array<BackboneElement>
+    description: Additional coverage classifications
+
+  - name: order
+    type: positiveInt
+    description: Relative order of coverage
+
+  - name: network
+    type: string
+    description: Insurer network
+
+  - name: contract
+    type: array<Reference>
+    description: Contract details

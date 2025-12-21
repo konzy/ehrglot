@@ -1,0 +1,140 @@
+# athenahealth to FHIR R4 Patient Mapping
+# Source: athenahealth API / athenaCollector database
+
+source_system: athenahealth
+source_table: patient
+target_resource: Patient
+description: Maps athenahealth patient demographics to FHIR R4 Patient
+
+source_query: |
+  SELECT
+    p.patientid,
+    p.enterpriseid,
+    p.firstname,
+    p.middlename,
+    p.lastname,
+    p.suffix,
+    p.dob,
+    p.sex,
+    p.ssn,
+    p.address1,
+    p.address2,
+    p.city,
+    p.state,
+    p.zip,
+    p.homephone,
+    p.mobilephone,
+    p.email,
+    p.maritalstatus,
+    p.preferredlanguage,
+    p.race,
+    p.ethnicity,
+    p.deceaseddate,
+    p.status
+  FROM patient p
+  WHERE p.status != 'deleted'
+
+field_mappings:
+  - source: patientid
+    target: id
+    transform: to_string
+
+  - source: enterpriseid
+    target: identifier[0].value
+
+  - target: identifier[0].system
+    default: "urn:athenahealth:enterpriseid"
+
+  - source: ssn
+    target: identifier[1].value
+    transform: format_ssn
+
+  - target: identifier[1].system
+    default: "http://hl7.org/fhir/sid/us-ssn"
+
+  - source: firstname
+    target: name[0].given[0]
+
+  - source: middlename
+    target: name[0].given[1]
+
+  - source: lastname
+    target: name[0].family
+
+  - source: suffix
+    target: name[0].suffix[0]
+
+  - target: name[0].use
+    default: "official"
+
+  - source: dob
+    target: birthDate
+    transform: date_to_fhir_date
+
+  - source: sex
+    target: gender
+    transform: athena_sex_to_fhir_gender
+
+  - source: address1
+    target: address[0].line[0]
+
+  - source: address2
+    target: address[0].line[1]
+
+  - source: city
+    target: address[0].city
+
+  - source: state
+    target: address[0].state
+
+  - source: zip
+    target: address[0].postalCode
+
+  - source: homephone
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - target: telecom[0].system
+    default: "phone"
+
+  - target: telecom[0].use
+    default: "home"
+
+  - source: mobilephone
+    target: telecom[1].value
+    transform: normalize_phone
+
+  - target: telecom[1].system
+    default: "phone"
+
+  - target: telecom[1].use
+    default: "mobile"
+
+  - source: email
+    target: telecom[2].value
+
+  - target: telecom[2].system
+    default: "email"
+
+  - source: maritalstatus
+    target: maritalStatus.coding[0].code
+    transform: athena_marital_to_fhir
+
+  - source: deceaseddate
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+
+value_mappings:
+  athena_sex_to_fhir_gender:
+    M: male
+    F: female
+    O: other
+    U: unknown
+
+  athena_marital_to_fhir:
+    SINGLE: S
+    MARRIED: M
+    DIVORCED: D
+    WIDOWED: W
+    SEPARATED: L
+    PARTNER: T

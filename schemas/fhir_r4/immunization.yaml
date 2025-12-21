@@ -1,0 +1,117 @@
+# FHIR R4 Immunization Resource Schema
+# https://www.hl7.org/fhir/R4/immunization.html
+
+resource: Immunization
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/immunization.html
+description: Immunization event information
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+
+  - name: identifier
+    type: array<Identifier>
+    description: Business identifier
+
+  - name: status
+    type: code
+    required: true
+    enum: [completed, entered-in-error, not-done]
+    description: Current status
+
+  - name: statusReason
+    type: CodeableConcept
+    description: Reason not done
+
+  - name: vaccineCode
+    type: CodeableConcept
+    required: true
+    description: Vaccine product administered (CVX)
+
+  - name: patient
+    type: Reference
+    required: true
+    description: Who was immunized
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Encounter immunization was part of
+    pii_level: medium
+
+  - name: occurrenceDateTime
+    type: dateTime
+    description: Vaccine administration date
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: month
+
+  - name: recorded
+    type: dateTime
+    description: When record was captured
+
+  - name: primarySource
+    type: boolean
+    description: Indicates source of reported record
+
+  - name: location
+    type: Reference
+    description: Where immunization occurred
+    pii_level: low
+    pii_category: geographic
+
+  - name: manufacturer
+    type: Reference
+    description: Vaccine manufacturer
+
+  - name: lotNumber
+    type: string
+    description: Vaccine lot number
+
+  - name: expirationDate
+    type: date
+    description: Vaccine expiration date
+
+  - name: site
+    type: CodeableConcept
+    description: Body site vaccine was administered
+
+  - name: route
+    type: CodeableConcept
+    description: How vaccine entered body
+
+  - name: doseQuantity
+    type: Quantity
+    description: Amount of vaccine administered
+
+  - name: performer
+    type: array<BackboneElement>
+    description: Who performed event
+
+  - name: note
+    type: array<Annotation>
+    description: Additional information
+    pii_level: medium
+    pii_category: clinical
+    masking_strategy: redact
+
+  - name: reasonCode
+    type: array<CodeableConcept>
+    description: Why immunization occurred
+
+  - name: reaction
+    type: array<BackboneElement>
+    description: Details of reaction
+
+  - name: protocolApplied
+    type: array<BackboneElement>
+    description: Protocol followed

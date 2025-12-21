@@ -1,0 +1,120 @@
+# FHIR R4 Claim Resource Schema
+# https://www.hl7.org/fhir/R4/claim.html
+
+resource: Claim
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/claim.html
+description: Claim, pre-determination or pre-authorization
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+    pii_level: low
+
+  - name: identifier
+    type: array<Identifier>
+    description: Business identifier for claim
+    pii_level: high
+    pii_category: financial
+    hipaa_identifier: account_numbers
+    masking_strategy: hash
+
+  - name: status
+    type: code
+    required: true
+    enum: [active, cancelled, draft, entered-in-error]
+    description: Status of the claim
+
+  - name: type
+    type: CodeableConcept
+    required: true
+    description: Category or discipline
+
+  - name: subType
+    type: CodeableConcept
+    description: More granular claim type
+
+  - name: use
+    type: code
+    required: true
+    enum: [claim, preauthorization, predetermination]
+    description: Type of claim
+
+  - name: patient
+    type: Reference
+    required: true
+    description: The recipient of the services
+    pii_level: critical
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: billablePeriod
+    type: Period
+    description: Relevant time frame for claim
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+
+  - name: created
+    type: dateTime
+    required: true
+    description: Resource creation date
+    pii_level: medium
+
+  - name: enterer
+    type: Reference
+    description: Author of the claim
+
+  - name: insurer
+    type: Reference
+    description: Target payor
+
+  - name: provider
+    type: Reference
+    required: true
+    description: Party responsible for claim
+
+  - name: priority
+    type: CodeableConcept
+    required: true
+    description: Processing priority
+
+  - name: prescription
+    type: Reference
+    description: Prescription authorizing services
+
+  - name: diagnosis
+    type: array<BackboneElement>
+    description: Pertinent diagnosis information
+    pii_level: medium
+    pii_category: clinical
+
+  - name: procedure
+    type: array<BackboneElement>
+    description: Clinical procedures performed
+    pii_level: medium
+    pii_category: clinical
+
+  - name: insurance
+    type: array<BackboneElement>
+    required: true
+    description: Patient insurance information
+    pii_level: critical
+    pii_category: financial
+    hipaa_identifier: account_numbers
+    masking_strategy: partial
+    masking_params:
+      show_last: 4
+
+  - name: item
+    type: array<BackboneElement>
+    description: Product or service provided
+
+  - name: total
+    type: Money
+    description: Total claim cost
+    pii_level: medium
+    pii_category: financial

@@ -1,0 +1,93 @@
+# FHIR R4 Location Resource Schema
+# https://www.hl7.org/fhir/R4/location.html
+
+resource: Location
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/location.html
+description: Details of a physical place
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+
+  - name: identifier
+    type: array<Identifier>
+    description: Unique code or number for location
+
+  - name: status
+    type: code
+    enum: [active, suspended, inactive]
+    description: Active, suspended, inactive
+
+  - name: operationalStatus
+    type: Coding
+    description: Operational status of location
+
+  - name: name
+    type: string
+    description: Name of the location
+
+  - name: alias
+    type: array<string>
+    description: Other names location is known by
+
+  - name: description
+    type: string
+    description: Additional details about location
+
+  - name: mode
+    type: code
+    enum: [instance, kind]
+    description: Instance or kind
+
+  - name: type
+    type: array<CodeableConcept>
+    description: Type of function performed
+
+  - name: telecom
+    type: array<ContactPoint>
+    description: Contact details
+
+  - name: address
+    type: Address
+    description: Physical location
+    pii_level: low
+    pii_category: geographic
+    hipaa_identifier: geographic_data
+    masking_strategy: generalize
+    masking_params:
+      keep_state: true
+
+  - name: physicalType
+    type: CodeableConcept
+    description: Physical form of location
+
+  - name: position
+    type: BackboneElement
+    description: GPS coordinates
+    pii_level: medium
+    pii_category: geographic
+    hipaa_identifier: geographic_data
+    masking_strategy: suppress
+
+  - name: managingOrganization
+    type: Reference
+    description: Organization responsible for provisioning
+
+  - name: partOf
+    type: Reference
+    description: Another location this is part of
+
+  - name: hoursOfOperation
+    type: array<BackboneElement>
+    description: Hours of operation
+
+  - name: availabilityExceptions
+    type: string
+    description: Description of availability exceptions
+
+  - name: endpoint
+    type: array<Reference>
+    description: Technical endpoints

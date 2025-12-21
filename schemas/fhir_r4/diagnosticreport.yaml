@@ -1,0 +1,122 @@
+# FHIR R4 DiagnosticReport Resource Schema
+# https://www.hl7.org/fhir/R4/diagnosticreport.html
+
+resource: DiagnosticReport
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/diagnosticreport.html
+description: Findings and interpretation of diagnostic tests
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+    pii_level: low
+
+  - name: identifier
+    type: array<Identifier>
+    description: Business identifier for report
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: basedOn
+    type: array<Reference>
+    description: What was requested
+
+  - name: status
+    type: code
+    required: true
+    enum: [registered, partial, preliminary, final, amended, corrected, appended, cancelled, entered-in-error, unknown]
+    description: Status of the report
+
+  - name: category
+    type: array<CodeableConcept>
+    description: Service category
+
+  - name: code
+    type: CodeableConcept
+    required: true
+    description: Name/Code for this diagnostic report (LOINC)
+
+  - name: subject
+    type: Reference
+    description: Subject of the report (patient)
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Health care event
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: effectiveDateTime
+    type: dateTime
+    description: Clinically relevant time
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: month
+
+  - name: effectivePeriod
+    type: Period
+    description: Clinically relevant period
+
+  - name: issued
+    type: instant
+    description: DateTime this report was released
+    pii_level: medium
+    pii_category: temporal
+
+  - name: performer
+    type: array<Reference>
+    description: Responsible diagnostic service
+
+  - name: resultsInterpreter
+    type: array<Reference>
+    description: Primary result interpreter
+
+  - name: specimen
+    type: array<Reference>
+    description: Specimens this report is based on
+
+  - name: result
+    type: array<Reference>
+    description: Observations related to report
+
+  - name: imagingStudy
+    type: array<Reference>
+    description: Reference to full imaging study
+    pii_level: high
+    pii_category: clinical
+    hipaa_identifier: photos
+    masking_strategy: suppress
+
+  - name: media
+    type: array<BackboneElement>
+    description: Key images associated with report
+    pii_level: high
+    pii_category: clinical
+    hipaa_identifier: photos
+    masking_strategy: suppress
+
+  - name: conclusion
+    type: string
+    description: Clinical conclusion
+    pii_level: medium
+    pii_category: clinical
+
+  - name: conclusionCode
+    type: array<CodeableConcept>
+    description: Codes for clinical conclusion
+
+  - name: presentedForm
+    type: array<Attachment>
+    description: Entire report as issued
+    pii_level: critical
+    pii_category: clinical
+    masking_strategy: suppress

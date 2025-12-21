@@ -1,0 +1,125 @@
+# FHIR R4 AllergyIntolerance Resource Schema
+# https://www.hl7.org/fhir/R4/allergyintolerance.html
+
+resource: AllergyIntolerance
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/allergyintolerance.html
+description: Allergy or intolerance (substance to avoid)
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+    pii_level: low
+
+  - name: identifier
+    type: array<Identifier>
+    description: External ids for this item
+
+  - name: clinicalStatus
+    type: CodeableConcept
+    description: active, inactive, resolved
+
+  - name: verificationStatus
+    type: CodeableConcept
+    description: unconfirmed, confirmed, refuted, entered-in-error
+
+  - name: type
+    type: code
+    enum: [allergy, intolerance]
+    description: Allergy or intolerance
+
+  - name: category
+    type: array<code>
+    enum: [food, medication, environment, biologic]
+    description: Category of identified substance
+
+  - name: criticality
+    type: code
+    enum: [low, high, unable-to-assess]
+    description: Estimate of potential clinical harm
+
+  - name: code
+    type: CodeableConcept
+    description: Code identifying the allergy substance
+
+  - name: patient
+    type: Reference
+    required: true
+    description: Who the allergy is about
+    pii_level: high
+    pii_category: direct_identifier
+    hipaa_identifier: mrn
+    masking_strategy: hash
+
+  - name: encounter
+    type: Reference
+    description: Encounter when allergy was asserted
+    pii_level: medium
+    pii_category: quasi_identifier
+
+  - name: onsetDateTime
+    type: dateTime
+    description: When allergy or intolerance was identified
+    pii_level: medium
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: year
+
+  - name: recordedDate
+    type: dateTime
+    description: Date first version was recorded
+    pii_level: medium
+    pii_category: temporal
+
+  - name: recorder
+    type: Reference
+    description: Who recorded the sensitivity
+
+  - name: asserter
+    type: Reference
+    description: Source of information about allergy
+
+  - name: lastOccurrence
+    type: dateTime
+    description: Date/time of last known occurrence
+    pii_level: medium
+    pii_category: temporal
+
+  - name: note
+    type: array<Annotation>
+    description: Additional information
+    pii_level: high
+    pii_category: clinical
+    masking_strategy: redact
+
+  - name: reaction
+    type: array<BackboneElement>
+    description: Adverse reaction events
+    fields:
+      - name: substance
+        type: CodeableConcept
+        description: Specific substance considered to be responsible
+      - name: manifestation
+        type: array<CodeableConcept>
+        required: true
+        description: Clinical symptoms/signs
+      - name: description
+        type: string
+        description: Description of the event
+      - name: onset
+        type: dateTime
+        description: Date/time of onset
+      - name: severity
+        type: code
+        enum: [mild, moderate, severe]
+        description: Severity of reaction
+      - name: exposureRoute
+        type: CodeableConcept
+        description: How the subject was exposed
+      - name: note
+        type: array<Annotation>
+        description: Text about reaction

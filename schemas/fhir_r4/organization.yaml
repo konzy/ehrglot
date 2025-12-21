@@ -1,0 +1,53 @@
+# FHIR R4 Organization Resource Schema
+# https://www.hl7.org/fhir/R4/organization.html
+
+resource: Organization
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/organization.html
+description: Formally recognized group of people or organizations
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+
+  - name: identifier
+    type: array<Identifier>
+    description: Identifies this organization (NPI, TIN, etc.)
+
+  - name: active
+    type: boolean
+    description: Whether organization's record is active
+
+  - name: type
+    type: array<CodeableConcept>
+    description: Kind of organization
+
+  - name: name
+    type: string
+    description: Name used for the organization
+
+  - name: alias
+    type: array<string>
+    description: Other names organization is known as
+
+  - name: telecom
+    type: array<ContactPoint>
+    description: Contact details for organization
+
+  - name: address
+    type: array<Address>
+    description: Address for organization
+
+  - name: partOf
+    type: Reference
+    description: Organization this is part of
+
+  - name: contact
+    type: array<BackboneElement>
+    description: Contact for the organization
+
+  - name: endpoint
+    type: array<Reference>
+    description: Technical endpoints for accessing services

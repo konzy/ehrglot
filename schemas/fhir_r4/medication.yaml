@@ -1,0 +1,55 @@
+# FHIR R4 Medication Resource Schema
+# https://www.hl7.org/fhir/R4/medication.html
+
+resource: Medication
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/medication.html
+description: Information about a medication including ingredients and packaging
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id of this artifact
+    pii_level: low
+    pii_category: quasi_identifier
+
+  - name: identifier
+    type: array<Identifier>
+    description: Business identifier for this medication
+
+  - name: code
+    type: CodeableConcept
+    description: Codes that identify this medication (RxNorm, NDC, etc.)
+
+  - name: status
+    type: code
+    enum: [active, inactive, entered-in-error]
+    description: Whether medication is active
+
+  - name: manufacturer
+    type: Reference
+    description: Manufacturer of the item
+
+  - name: form
+    type: CodeableConcept
+    description: Powder, tablet, capsule, etc.
+
+  - name: amount
+    type: Ratio
+    description: Amount of drug in package
+
+  - name: ingredient
+    type: array<BackboneElement>
+    description: Active or inactive ingredient
+
+  - name: batch
+    type: BackboneElement
+    description: Details about packaged medications
+    fields:
+      - name: lotNumber
+        type: string
+        description: Identifier assigned to batch
+      - name: expirationDate
+        type: dateTime
+        description: When batch will expire

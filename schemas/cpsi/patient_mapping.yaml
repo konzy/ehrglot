@@ -1,0 +1,158 @@
+# CPSI (Computer Programs and Systems, Inc.) to FHIR R4 Patient Mapping
+# Source: CPSI Evident/Thrive database (SQL Server)
+
+source_system: cpsi
+source_table: ADM_PATIENT
+target_resource: Patient
+description: Maps CPSI patient demographics to FHIR R4 Patient
+
+source_query: |
+  SELECT
+    p.PATIENT_ID,
+    p.MRN,
+    p.FIRST_NAME,
+    p.MIDDLE_NAME,
+    p.LAST_NAME,
+    p.SUFFIX,
+    p.BIRTH_DATE,
+    p.SEX_CODE,
+    p.SSN,
+    a.STREET_1,
+    a.STREET_2,
+    a.CITY,
+    a.STATE_CODE,
+    a.POSTAL_CODE,
+    ph.HOME_PHONE,
+    ph.MOBILE_PHONE,
+    ph.WORK_PHONE,
+    p.EMAIL,
+    p.MARITAL_STATUS_CODE,
+    p.LANGUAGE_CODE,
+    p.RACE_CODE,
+    p.ETHNIC_CODE,
+    p.DECEASED_FLAG,
+    p.DECEASED_DATE,
+    p.ACTIVE_FLAG
+  FROM ADM_PATIENT p
+  LEFT JOIN ADM_ADDRESS a ON p.PATIENT_ID = a.PATIENT_ID AND a.ADDRESS_TYPE = 'HOME'
+  LEFT JOIN ADM_PHONE ph ON p.PATIENT_ID = ph.PATIENT_ID
+  WHERE p.ACTIVE_FLAG = 'Y'
+
+field_mappings:
+  - source: PATIENT_ID
+    target: id
+    transform: to_string
+
+  - source: MRN
+    target: identifier[0].value
+
+  - target: identifier[0].system
+    default: "urn:cpsi:mrn"
+
+  - target: identifier[0].type.coding[0].code
+    default: "MR"
+
+  - source: SSN
+    target: identifier[1].value
+    transform: format_ssn
+
+  - target: identifier[1].system
+    default: "http://hl7.org/fhir/sid/us-ssn"
+
+  - source: FIRST_NAME
+    target: name[0].given[0]
+
+  - source: MIDDLE_NAME
+    target: name[0].given[1]
+
+  - source: LAST_NAME
+    target: name[0].family
+
+  - source: SUFFIX
+    target: name[0].suffix[0]
+
+  - target: name[0].use
+    default: "official"
+
+  - source: BIRTH_DATE
+    target: birthDate
+    transform: date_to_fhir_date
+
+  - source: SEX_CODE
+    target: gender
+    transform: cpsi_sex_to_fhir_gender
+
+  - source: STREET_1
+    target: address[0].line[0]
+
+  - source: STREET_2
+    target: address[0].line[1]
+
+  - source: CITY
+    target: address[0].city
+
+  - source: STATE_CODE
+    target: address[0].state
+
+  - source: POSTAL_CODE
+    target: address[0].postalCode
+
+  - target: address[0].use
+    default: "home"
+
+  - source: HOME_PHONE
+    target: telecom[0].value
+    transform: normalize_phone
+
+  - target: telecom[0].system
+    default: "phone"
+
+  - target: telecom[0].use
+    default: "home"
+
+  - source: MOBILE_PHONE
+    target: telecom[1].value
+    transform: normalize_phone
+
+  - target: telecom[1].system
+    default: "phone"
+
+  - target: telecom[1].use
+    default: "mobile"
+
+  - source: EMAIL
+    target: telecom[2].value
+
+  - target: telecom[2].system
+    default: "email"
+
+  - source: MARITAL_STATUS_CODE
+    target: maritalStatus.coding[0].code
+    transform: cpsi_marital_to_fhir
+
+  - source: DECEASED_FLAG
+    target: deceasedBoolean
+    transform: cpsi_yn_to_boolean
+
+  - source: DECEASED_DATE
+    target: deceasedDateTime
+    transform: datetime_to_fhir_datetime
+
+value_mappings:
+  cpsi_sex_to_fhir_gender:
+    M: male
+    F: female
+    U: unknown
+    O: other
+
+  cpsi_yn_to_boolean:
+    Y: true
+    N: false
+
+  cpsi_marital_to_fhir:
+    S: S
+    M: M
+    D: D
+    W: W
+    P: T
+    L: L

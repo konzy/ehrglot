@@ -1,0 +1,105 @@
+# FHIR R4 Appointment Resource Schema
+# https://www.hl7.org/fhir/R4/appointment.html
+
+resource: Appointment
+version: R4
+fhir_url: https://www.hl7.org/fhir/R4/appointment.html
+description: Booking of a healthcare event
+
+fields:
+  - name: id
+    type: id
+    required: true
+    description: Logical id
+
+  - name: identifier
+    type: array<Identifier>
+    description: External ids for this appointment
+
+  - name: status
+    type: code
+    required: true
+    enum: [proposed, pending, booked, arrived, fulfilled, cancelled, noshow, entered-in-error, checked-in, waitlist]
+    description: Appointment status
+
+  - name: cancelationReason
+    type: CodeableConcept
+    description: Reason for cancellation
+
+  - name: serviceCategory
+    type: array<CodeableConcept>
+    description: Broad categorization of service
+
+  - name: serviceType
+    type: array<CodeableConcept>
+    description: Specific type of service
+
+  - name: specialty
+    type: array<CodeableConcept>
+    description: Specialty of practitioner
+
+  - name: appointmentType
+    type: CodeableConcept
+    description: Style of appointment
+
+  - name: reasonCode
+    type: array<CodeableConcept>
+    description: Coded reason for appointment
+    pii_level: medium
+    pii_category: clinical
+
+  - name: reasonReference
+    type: array<Reference>
+    description: Reason the appointment is scheduled
+
+  - name: priority
+    type: unsignedInt
+    description: Used to make informed decisions if needing to re-prioritize
+
+  - name: description
+    type: string
+    description: Shown on appt subject line
+    pii_level: medium
+    pii_category: clinical
+
+  - name: start
+    type: instant
+    description: When appointment is to take place
+    pii_level: high
+    pii_category: temporal
+    hipaa_identifier: dates
+    masking_strategy: generalize
+    masking_params:
+      precision: day
+
+  - name: end
+    type: instant
+    description: When appointment is to conclude
+    pii_level: high
+    pii_category: temporal
+
+  - name: minutesDuration
+    type: positiveInt
+    description: Duration in minutes
+
+  - name: slot
+    type: array<Reference>
+    description: Slot(s) that this appointment is filling
+
+  - name: created
+    type: dateTime
+    description: When appointment was initially created
+
+  - name: comment
+    type: string
+    description: Additional comments
+    pii_level: high
+    pii_category: clinical
+    masking_strategy: redact
+
+  - name: participant
+    type: array<BackboneElement>
+    required: true
+    description: Participants involved
+    pii_level: high
+    pii_category: direct_identifier
