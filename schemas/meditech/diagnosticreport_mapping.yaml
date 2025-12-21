@@ -1,0 +1,69 @@
+# Meditech to FHIR R4 DiagnosticReport Mapping
+
+source_system: meditech
+source_table: LAB.ORDER
+target_resource: DiagnosticReport
+
+source_schema:
+  database: MEDITECH
+  table: LAB.ORDER
+
+field_mappings:
+  - source: ORDER_ID
+    target: id
+    transform: to_string
+
+  - source: ACCESSION_NUMBER
+    target: identifier[0].value
+    transform: null
+    target_context:
+      identifier[0].system: "urn:oid:meditech:accession"
+    skip_if_null: true
+
+  - source: ORDER_STATUS
+    target: status
+    transform: meditech_order_status_to_report_status
+
+  - source: ORDER_TYPE
+    target: category[0].coding[0].code
+    transform: meditech_order_type_to_category
+
+  - source: LOINC_CODE
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: ORDER_NAME
+    target: code.text
+    transform: null
+
+  - source: URN
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: VISIT_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: COLLECTION_DATE_TIME
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: RESULT_DATE_TIME
+    target: issued
+    transform: datetime_to_fhir_instant
+    skip_if_null: true
+
+  - source: INTERPRETING_PROVIDER_ID
+    target: resultsInterpreter[0].reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: CONCLUSION
+    target: conclusion
+    transform: null
+    skip_if_null: true

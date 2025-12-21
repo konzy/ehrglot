@@ -1,0 +1,72 @@
+# Meditech to FHIR R4 Immunization Mapping
+
+source_system: meditech
+source_table: ADM.IMMUNIZATION
+target_resource: Immunization
+
+source_schema:
+  database: MEDITECH
+  table: ADM.IMMUNIZATION
+
+field_mappings:
+  - source: IMMUNIZATION_ID
+    target: id
+    transform: to_string
+
+  - source: IMMUNIZATION_STATUS
+    target: status
+    transform: meditech_imm_status_to_fhir
+
+  - source: CVX_CODE
+    target: vaccineCode.coding[0].code
+    transform: null
+    target_context:
+      vaccineCode.coding[0].system: "http://hl7.org/fhir/sid/cvx"
+    skip_if_null: true
+
+  - source: VACCINE_NAME
+    target: vaccineCode.text
+    transform: null
+
+  - source: URN
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: VISIT_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: ADMINISTRATION_DATE_TIME
+    target: occurrenceDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: ADMINISTERED_BY_ID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: LOT_NUMBER
+    target: lotNumber
+    transform: null
+    skip_if_null: true
+
+  - source: EXPIRATION_DATE
+    target: expirationDate
+    transform: date_to_fhir_date
+    skip_if_null: true
+
+  - source: DOSE_AMOUNT
+    target: doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: ROUTE
+    target: route.text
+    transform: null
+    skip_if_null: true
+
+  - source: SITE
+    target: site.text
+    transform: null
+    skip_if_null: true

@@ -1,0 +1,59 @@
+# Meditech to FHIR R4 AllergyIntolerance Mapping
+
+source_system: meditech
+source_table: ADM.ALLERGY
+target_resource: AllergyIntolerance
+
+source_schema:
+  database: MEDITECH
+  table: ADM.ALLERGY
+
+field_mappings:
+  - source: ALLERGY_ID
+    target: id
+    transform: to_string
+
+  - source: ALLERGY_STATUS
+    target: clinicalStatus.coding[0].code
+    transform: meditech_allergy_status_to_fhir
+    target_context:
+      clinicalStatus.coding[0].system: "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+
+  - source: ALLERGY_TYPE
+    target: type
+    transform: meditech_allergy_type_to_fhir
+
+  - source: ALLERGEN_TYPE
+    target: category[0]
+    transform: meditech_allergen_type_to_category
+
+  - source: SEVERITY
+    target: criticality
+    transform: meditech_severity_to_criticality
+
+  - source: ALLERGEN_NAME
+    target: code.text
+    transform: null
+
+  - source: URN
+    target: patient.reference
+    transform: to_patient_reference
+
+  - source: ONSET_DATE
+    target: onsetDateTime
+    transform: datetime_to_fhir_datetime
+    skip_if_null: true
+
+  - source: ENTRY_DATE_TIME
+    target: recordedDate
+    transform: datetime_to_fhir_datetime
+
+  - source: ENTERED_BY_ID
+    target: recorder.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: REACTION_DESCRIPTION
+    target: reaction[0].manifestation[0].text
+    transform: null
+    skip_if_null: true

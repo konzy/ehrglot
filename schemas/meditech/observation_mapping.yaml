@@ -1,0 +1,71 @@
+# Meditech to FHIR R4 Observation Mapping
+
+source_system: meditech
+source_table: LAB.RESULT
+target_resource: Observation
+
+source_schema:
+  database: MEDITECH
+  table: LAB.RESULT
+
+field_mappings:
+  - source: RESULT_ID
+    target: id
+    transform: to_string
+
+  - source: RESULT_STATUS
+    target: status
+    transform: meditech_result_status_to_fhir
+
+  - source: null
+    target: category[0].coding[0].code
+    default: laboratory
+
+  - source: LOINC_CODE
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://loinc.org"
+    skip_if_null: true
+
+  - source: TEST_NAME
+    target: code.text
+    transform: null
+
+  - source: URN
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: VISIT_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: RESULT_DATE_TIME
+    target: effectiveDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: NUMERIC_VALUE
+    target: valueQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: UNITS
+    target: valueQuantity.unit
+    transform: null
+    skip_if_null: true
+
+  - source: TEXT_VALUE
+    target: valueString
+    transform: null
+    condition: "NUMERIC_VALUE IS NULL"
+
+  - source: ABNORMAL_FLAG
+    target: interpretation[0].coding[0].code
+    transform: meditech_abnormal_to_fhir
+    skip_if_null: true
+
+  - source: REFERENCE_RANGE
+    target: referenceRange[0].text
+    transform: null
+    skip_if_null: true

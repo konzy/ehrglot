@@ -1,0 +1,80 @@
+# Meditech to FHIR R4 MedicationRequest Mapping
+
+source_system: meditech
+source_table: PHARM.ORDER
+target_resource: MedicationRequest
+
+source_schema:
+  database: MEDITECH
+  table: PHARM.ORDER
+
+field_mappings:
+  - source: ORDER_ID
+    target: id
+    transform: to_string
+
+  - source: ORDER_STATUS
+    target: status
+    transform: meditech_order_status_to_fhir
+
+  - source: null
+    target: intent
+    default: order
+
+  - source: NDC_CODE
+    target: medicationCodeableConcept.coding[0].code
+    transform: null
+    target_context:
+      medicationCodeableConcept.coding[0].system: "http://hl7.org/fhir/sid/ndc"
+    skip_if_null: true
+
+  - source: DRUG_NAME
+    target: medicationCodeableConcept.text
+    transform: null
+
+  - source: URN
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: VISIT_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: ORDER_DATE_TIME
+    target: authoredOn
+    transform: datetime_to_fhir_datetime
+
+  - source: ORDERING_PROVIDER_ID
+    target: requester.reference
+    transform: to_practitioner_reference
+
+  - source: DOSE
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: DOSE_UNIT
+    target: dosageInstruction[0].doseAndRate[0].doseQuantity.unit
+    transform: null
+    skip_if_null: true
+
+  - source: FREQUENCY
+    target: dosageInstruction[0].timing.code.text
+    transform: null
+    skip_if_null: true
+
+  - source: ROUTE
+    target: dosageInstruction[0].route.text
+    transform: null
+    skip_if_null: true
+
+  - source: QUANTITY
+    target: dispenseRequest.quantity.value
+    transform: to_decimal
+    skip_if_null: true
+
+  - source: REFILLS
+    target: dispenseRequest.numberOfRepeatsAllowed
+    transform: to_integer
+    skip_if_null: true

@@ -1,0 +1,52 @@
+# Meditech to FHIR R4 Procedure Mapping
+
+source_system: meditech
+source_table: ADM.PROCEDURE
+target_resource: Procedure
+
+source_schema:
+  database: MEDITECH
+  table: ADM.PROCEDURE
+
+field_mappings:
+  - source: PROCEDURE_ID
+    target: id
+    transform: to_string
+
+  - source: PROCEDURE_STATUS
+    target: status
+    transform: meditech_proc_status_to_fhir
+
+  - source: CPT_CODE
+    target: code.coding[0].code
+    transform: null
+    target_context:
+      code.coding[0].system: "http://www.ama-assn.org/go/cpt"
+    skip_if_null: true
+
+  - source: PROCEDURE_DESCRIPTION
+    target: code.text
+    transform: null
+
+  - source: URN
+    target: subject.reference
+    transform: to_patient_reference
+
+  - source: VISIT_ID
+    target: encounter.reference
+    transform: to_encounter_reference
+    skip_if_null: true
+
+  - source: PROCEDURE_DATE_TIME
+    target: performedDateTime
+    transform: datetime_to_fhir_datetime
+
+  - source: PERFORMING_PROVIDER_ID
+    target: performer[0].actor.reference
+    transform: to_practitioner_reference
+    skip_if_null: true
+
+  - source: PROCEDURE_NOTES
+    target: note[0].text
+    transform: null
+    skip_if_null: true
