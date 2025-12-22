@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/konzy/ehrglot/pkg/generator/csharp"
 	"github.com/konzy/ehrglot/pkg/generator/golang"
 	"github.com/konzy/ehrglot/pkg/generator/java"
+	"github.com/konzy/ehrglot/pkg/generator/kotlin"
 	"github.com/konzy/ehrglot/pkg/generator/python"
 	"github.com/konzy/ehrglot/pkg/generator/rust"
+	"github.com/konzy/ehrglot/pkg/generator/scala"
+	"github.com/konzy/ehrglot/pkg/generator/sql"
 	"github.com/konzy/ehrglot/pkg/generator/typescript"
 	"github.com/konzy/ehrglot/pkg/schema"
 	"github.com/spf13/cobra"
@@ -32,6 +36,10 @@ Supports generating:
   - TypeScript interfaces
   - Java classes
   - Rust structs
+  - C# classes
+  - Scala case classes
+  - Kotlin data classes
+  - SQL DDL + dbt models
 
 Example:
   ehrglot generate --lang python --output ./generated`,
@@ -71,6 +79,14 @@ func generateCmd() *cobra.Command {
 				generator = java.NewGenerator()
 			case "rust", "rs":
 				generator = rust.NewGenerator()
+			case "csharp", "cs":
+				generator = csharp.NewGenerator()
+			case "scala":
+				generator = scala.NewGenerator()
+			case "kotlin", "kt":
+				generator = kotlin.NewGenerator()
+			case "sql", "dbt":
+				generator = sql.NewGenerator()
 			default:
 				return fmt.Errorf("unsupported language: %s", language)
 			}
@@ -86,7 +102,7 @@ func generateCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&schemaDir, "schemas", "s", "schemas", "Schema directory path")
 	cmd.Flags().StringVarP(&outputDir, "output", "o", "./generated", "Output directory")
-	cmd.Flags().StringVarP(&language, "lang", "l", "python", "Target language (python, go, typescript, java, rust)")
+	cmd.Flags().StringVarP(&language, "lang", "l", "python", "Target language (python, go, ts, java, rust, csharp, scala, kotlin, sql)")
 
 	return cmd
 }
